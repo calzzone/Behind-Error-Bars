@@ -1,0 +1,1372 @@
+---
+title: "A comparison of hepatitis E and A in a teaching hospital in Northwestern Romania Acute hepatitis E – a mild disease?"
+subtitle: "Showcase of the paper with the same name"
+author: "Alexandru Istrate, Amanda Rădulescu"
+output:
+  html_document:
+    df_print: kable
+    fig_caption: yes
+    number_sections: yes
+    toc: yes
+    toc_float: yes
+---
+
+This is a showcase of the statistical analysis in [the paper with the same name](https://medpharmareports.com/index.php/mpr/article/view/1487). It is not the paper itself. Just some statistics from it.
+
+
+
+# Pre-analysis
+```{r Import libraries, echo=F, message=F, warning=F, include=F, results='hide'}
+library(tidyverse)
+library(ggplot2) # from tidyverse
+#library(ggExtra) # ggMarginal()
+#library(cowplot) # plot_grid
+library(ggpubr)
+library(ggthemes)
+#library(ggcorrplot)
+#library(GGally) #ggpairs
+#library(dplyr) # from tidyverse
+library(readxl)
+library(grid)
+#library(likert)
+
+library(pander)
+panderOptions('digits', 2)
+panderOptions('round', 2)
+panderOptions('keep.trailing.zeros', TRUE)
+options(scipen = 999)
+options(digits = 3)
+
+library(knitr)
+library(formattable)
+library(kableExtra)
+library(stargazer)
+library(finalfit)
+
+#library(ggfortify)
+#library(survival)
+
+library(Hmisc) #rcor
+#library(stringr) # from tidyverse
+library(DescTools)
+
+options(knitr.table.format = "pandoc")
+
+knitr::opts_chunk$set(comment = NA)
+
+library(captioner)
+fig_caption <- captioner::captioner("Figure", infix = ":")
+tab_caption <- captioner::captioner("Table", infix = ":")
+
+options(knitr.table.format = "pandoc")
+```
+
+```{r Source scripts, message=F, warning=F, echo=F, include=F, results='hide'}
+base_path = "~/Dropbox/Stats/"
+# base_path = "C:\\Users\\calzzone\\Dropbox\\Stats\\"
+
+source(paste0(base_path, 'R library/search_for_variable.R'), echo=F)
+source(paste0(base_path, 'R library/mySSby.R'), echo=F)
+source(paste0(base_path, 'R library/mySSby3.R'), echo=F) # replace finalfit
+source(paste0(base_path, 'R library/describe_numerice1.R'), echo=F)
+source(paste0(base_path, 'R library/contingency.R'), echo=F)
+source(paste0(base_path, 'R library/describe2x2_v1.R'), echo=F)
+source(paste0(base_path, 'R library/mytheme.R'), echo=F)
+source(paste0(base_path, 'R library/assorted bits.R'), echo=F)
+source(paste0(base_path, 'R library/custom_charts.R'), echo=F)
+
+ggplot2::theme_set(my_theme(base_theme = theme_grey, base_size = 9))
+theme_reverse_grid = theme()
+
+setwd(paste0(base_path, "hepe"))
+```
+
+```{r Import data,  echo=F, message=F, warning=F, include=T, results='markdown'}
+
+metadata <- suppressWarnings(read_excel("Book2.xlsx", sheet = "metadata"))
+
+baza_de_date <- suppressWarnings(read_excel("Book2.xlsx", col_types = metadata$Type)) %>% 
+  filter(is.na(`Sectia`)) %>%
+  mutate(
+    `hepa cron (B, C, D, ciroza)` = ifelse(`hepa cron (B, C, D, ciroza)`=="nu", "nu", "da") %>% factor(levels = c("da", "nu")),
+    `Varsta (grupe)` = cut(`Varsta`, c(18, 30, 40, 50, Inf), right = F),
+    `BD (grupe)` = cut(`BD`, c(0, 0.3, Inf), right = F),
+    `BT (grupe)` = cut(`BT`, c(0, 1.2, Inf), right = F),
+    `Fosfataza alcalina (grupe)` = cut(`Fosfataza alcalina`, c(0, 130, Inf), right = F),
+    `Gama GT (grupe)` = cut(`Gama GT`, c(0, 50, Inf), right = F),
+    `GOT (grupe)` = cut(`GOT`, c(0, 35, 350, Inf), right = F),
+    `GPT (grupe)` = cut(`GPT`, c(0, 35, 350, Inf), right = F),
+    `PT (sec) (grupe)` = cut(`PT (sec)`, c(0, 13.9, Inf), right = F),
+    `PT (%) (grupe)` = cut(`PT (%)`, c(0, 70, Inf), right = F),
+    `INR (grupe)` = cut(`INR`, c(0.8, 1.2, Inf), right = F),
+    `APTT  (sec) (grupe)` = cut(`APTT  (sec)`, c(0, 22.7, 31.8, Inf), right = F)
+  ) %>%
+  labelled::set_variable_labels(.labels = metadata$Var) %>% 
+  #select(c(metadata$ID[metadata$Type %in% c("text") & metadata$Role %in% c("danu" ,"binary", "factor", "ordered")]))
+  mutate_at(metadata$ID[metadata$Type %in% c("text") & 
+              metadata$Role %in% c("danu" ,"binary", "factor", "ordered")], as.factor_metadata, metadata=metadata) %>% 
+  #mutate(`Localizare` = factor(`Localizare`, levels = metadata$Levels[metadata$Var=="Localizare"] %>% str_split(";", simplify = T) %>% as.vector()  )) %>% 
+  labelled::set_variable_labels(.labels = metadata$Label)  %>%
+  select(-c(metadata$Var[metadata$Role == "exclude"])) %>% 
+filter(!(Group == "A" & `GPT`<35)) %>% 
+filter(!(Group == "A" & `GOT`<35)) %>% 
+  filter(!(Group == "A" & (`GPT`<350 | `GOT`<350) & `GPT`/`GOT`<1))
+  #select(-c(metadata$Var[metadata$Role=="id"]))
+
+my.groups <- list()
+
+for (gr in unique(na.omit(metadata$Group))) {
+  my.groups[[gr]] <- make_groups_metadata(gr, metadata)
+}
+
+# my.groups
+#baza_de_date %<>% select(unlist(my.groups, use.names = F))
+
+
+# select( c(
+#     #"ID", "Name", "CNP", "Perioada", "FO", 
+#     "Group",
+#     "Sectia", "Data internarii", "Data externarii", "Durata internarii", 
+#     "Varsta", "Sex", 
+#     "Durata bolii", 
+#     "BD", "BT", 
+#     "Fosfataza alcalina", "Gama GT", 
+#     "GOT", "GPT", 
+#     "PT (sec)", "PT (%)", "INR", "APTT  (sec)", 
+#     #"Glicemie", 
+#     "Ag HBs", 
+#     "Iceter/colestaza", 
+#     "hepa cron (B, C, D, ciroza)", "Steatohepatita", "Diabet zaharat",
+#     "Calatorii", "Focar", 
+#     "Neuro", "Renal"
+#     #"Column1", 
+#     #"Ac HBc IgM", "Ac HCV", "Ag Hbe", "Ac HBe", "HAV Ig M", "IgM Anti HEV", 
+#     #"Trigliceride", "Cholesterol", "HDL", "LDL"
+#  )) %>% 
+
+```  
+
+
+```{r fig.height=4, fig.width=2.5, dpi=144, echo=F, message=F, warning=F, results="asis"}
+metadata2 <- metadata
+metadata2$Breaks[metadata2$Var == "Varsta"] = "18;30;40;50;60;70;80"
+h1 <- my_histo(filter(baza_de_date, `Group` == "E"), "Varsta", categ = "Sex", metadata = metadata2, small=F) +
+  labs(title = "Hepatita E: n=48 (24%)") + no_legend + no.title.x + #no.minor_grid.y + 
+  theme(axis.text.x = element_blank(), axis.title.y = element_text(size=10), 
+        plot.title = element_text(size=11.5)) + 
+  scale_y_continuous("", limits = c(0, 20), breaks=c(0, 10, 20)) 
+h2 <- my_histo(filter(baza_de_date, `Group` == "A"), "Varsta", categ = "Sex", metadata = metadata2, small=F) +
+  labs(title = "Hepatita A: n=152 (76%)") + legend.top_right + #no.minor_grid.y +
+  theme(axis.title.x = element_text(size=11), legend.text = element_text(size=10), legend.title = element_text(size=10), 
+        plot.title = element_text(size=11.5)) +
+  scale_y_continuous("Nr. cazuri", limits = c(0, 60), breaks=seq(0, 60, 10)) +
+  labs(x="Vărsta la prezentare (ani)")
+
+cowplot::plot_grid(h1, h2, nrow=2, rel_heights = c(25, 60)) %>%
+  cowplot::save_plot(filename = "p0_ro.png", base_width = 2.5, base_height = 4 )
+```  
+
+## Treated with antivirals (Hepatitis E)
+
+```{r fig.height=9, fig.width=9, dpi=144, echo=F, message=F, warning=F, results="asis"}
+
+cat("\n\n")
+cat(tab_caption("tav"," Hepatitis E patients who recevied antivirals ."))
+cat("\n\n")
+
+baza_de_date %>%
+  filter(`Tratament antiviral`=="yes") %>%
+  mutate(`Data internarii`  = `Data internarii` %>% as.numeric %>% as.Date(origin = "1899-12-30")) %>%
+  mutate(`Data externarii`  = `Data externarii` %>% as.numeric %>% as.Date(origin = "1899-12-30")) %>%
+  flextable::flextable() %>%
+  flextable::autofit()
+
+```
+
+## Treated with plasma (Hepatits A)
+
+```{r fig.height=9, fig.width=9, dpi=144, echo=F, message=F, warning=F, results="asis"}
+
+cat("\n\n")
+cat(tab_caption("tplasma","Hepatits A patients who recevied plasma."))
+cat("\n\n")
+
+baza_de_date %>%
+  filter(`Group`=="A") %>%
+  filter(`Bad outcome`=="yes") %>% 
+  mutate(`Data internarii`  = `Data internarii` %>% as.numeric %>% as.Date(origin = "1899-12-30")) %>%
+  mutate(`Data externarii`  = `Data externarii` %>% as.numeric %>% as.Date(origin = "1899-12-30")) %>%
+  flextable::flextable() %>%
+  flextable::autofit()
+
+```
+
+## Deceased
+
+```{r fig.height=9, fig.width=9, dpi=144, echo=F, message=F, warning=F, results="asis"}
+
+cat("\n\n")
+cat(tab_caption("tdied","Patients who died."))
+cat("\n\n")
+
+baza_de_date %>%
+  filter(`Deces`=="yes") %>%
+  mutate(`Data internarii`  = `Data internarii` %>% as.numeric %>% as.Date(origin = "1899-12-30")) %>%
+  mutate(`Data externarii`  = `Data externarii` %>% as.numeric %>% as.Date(origin = "1899-12-30")) %>%
+  flextable::flextable() %>%
+  flextable::autofit()
+
+```
+
+# Table 1
+
+```{r fig.height=9, fig.width=9, dpi=144, echo=F, message=F, warning=F, results="asis"}
+
+cat("\n\n")
+cat(tab_caption("t2.1","Summary table for the diagnosis (hepatitis A / E) by several predictors."))
+cat("\n\n")
+
+t1 <- baza_de_date %>%
+  select(
+    `Group`,
+    `Sex`,
+    `Varsta`, `Varsta (grupe)`,
+    #`Durata bolii`, 
+     `Durata internarii`,
+    `BD`,`BD (grupe)`, `BT`, `BT (grupe)`,
+    `Fosfataza alcalina`, `Fosfataza alcalina (grupe)`, `Gama GT`, `Gama GT (grupe)`,
+    `GOT`, `GOT (grupe)`, `GPT`, `GPT (grupe)`,
+    `PT (sec)`,`PT (sec) (grupe)`, `PT (%)`, `PT (%) (grupe)`, `INR`, `INR (grupe)`, `APTT  (sec)`, `APTT  (sec) (grupe)`,
+    `Creatinina`,
+    #`Ag HBs`,
+    #`Iceter/colestaza`,
+    `hepa cron (B, C, D, ciroza)`, #, `Steatohepatita`, 
+    `Ciroza`,
+    `VHB`,
+    `VHC`,
+    `Neuro`,
+    `Renal`,
+    `Diabet zaharat`,
+    `Bad outcome`,
+    `INR_1.5`,
+    `PT_70%`,
+    `GOT_350`,
+    `GPT_350`,
+    `Tulburari coagulare`,
+    `Transaminaze 10x`
+
+    #`Calatorii`, `Focar`,
+    #`Neuro`, `Renal`
+  ) %>%
+  mutate_if (is.factor, forcats::fct_rev) 
+
+ t1 %<>% 
+  mutate_at(intersect(metadata$Var[metadata$Role=="danu"], colnames(t1)), forcats::fct_rev) %>%
+  mutate (`Group` = forcats::fct_rev(`Group`)) %>%
+  make_summary_table("Group", g.rows = c("med_iqr", "mean_sd"),  metadata = metadata, 
+                     header=list(lang="en", columns = c('Factor', "Levels", "Total", "Statistics")),
+                     footnote = list(lang="en", values=c("med_range", "mean_sd", "OR/RR", "V")))
+
+
+t1
+
+
+```
+
+## Linear model
+
+```{r fig.height=9, fig.width=9, dpi=144, echo=F, message=F, warning=F, results="asis"}
+
+
+vars <- c("Durata internarii",
+    "BD",#"BD (grupe)", 
+    "BT", #"BT (grupe)",
+    "Fosfataza alcalina", # "Fosfataza alcalina (grupe)", 
+    "Gama GT", #"Gama GT (grupe)",
+    "GOT", #"GOT (grupe)", 
+    "GPT", #"GPT (grupe)",
+    "PT (sec)",#"PT (sec) (grupe)", 
+    "PT (%)", #"PT (%) (grupe)", 
+    "INR", #"INR (grupe)", 
+    "APTT  (sec)" , #"APTT  (sec) (grupe)")
+    "Creatinina")
+    #"hepa cron (B, C, D, ciroza)")
+
+# vars <- "BD"
+
+for (v in vars) {
+  
+  cat("\n\n")
+  cat( "### Linear model table for " %+% v)
+  cat("\n\n")
+  
+  db <- baza_de_date %>% select(c(v, "Group", "Sex", "Varsta")) %>% set_colnames(c("Y", "Group", "Sex", "Varsta"))
+
+t <- aov(data=db, formula=`Y`~`Group`+`Sex`+`Varsta`) %>% broom::tidy() %>%
+  mutate(
+    `Effect` = `term`, `DF` = scales::number(`df`, 1), 
+    `SSq` = scales::number(`sumsq`, 0.1),
+    `F` = scales::number(`statistic`, 0.001),
+    `p (signif.)` = scales::pvalue(`p.value`)  %+% " " %+% pstars(`p.value`)
+  ) %>%
+  select(c("Effect", "DF", "SSq", "F", "p (signif.)")) %>%
+  mutate_if(is.character, str_remove_all, "NA") %>%
+  flextable::flextable() %>%
+  flextable::theme_booktabs() %>%
+  flextable::hline(i=c(1, 3), border = officer::fp_border(color = "black", style = "solid", width = 1)) %>%
+  flextable::italic(i=1) %>%
+  flextable::autofit()
+  
+  cat("\n\n")
+  # cat(knit_print(t))
+  print(t)
+  cat("\n\n")
+
+}
+```
+
+```{r fig.height=9, fig.width=9, dpi=144, echo=F, message=F, warning=F, results="asis"}
+
+
+vars <- c("Durata internarii",
+    "BD",#"BD (grupe)", 
+    "BT", #"BT (grupe)",
+    "Fosfataza alcalina", # "Fosfataza alcalina (grupe)", 
+    "Gama GT", #"Gama GT (grupe)",
+    "GOT", #"GOT (grupe)", 
+    "GPT", #"GPT (grupe)",
+    "PT (sec)",#"PT (sec) (grupe)", 
+    "PT (%)", #"PT (%) (grupe)", 
+    "INR", #"INR (grupe)", 
+    "APTT  (sec)" , #"APTT  (sec) (grupe)")
+    "Creatinina")
+    #"hepa cron (B, C, D, ciroza)")
+
+vars <- "BD"
+
+for (v in vars) {
+  
+  cat("\n\n")
+  cat( "### Linear model table for " %+% v)
+  cat("\n\n")
+  
+  db <- baza_de_date %>% select(c(v, "Group", "Sex", "Varsta")) %>% set_colnames(c("Y", "Group", "Sex", "Varsta"))
+
+t <- aov(data=db, formula=`Y`~`Group`+`Sex`+`Varsta`) %>% broom::tidy() %>%
+  mutate(
+    `Effect` = `term`, `DF` = scales::number(`df`, 1), 
+    `SSq` = scales::number(`sumsq`, 0.1),
+    `F` = scales::number(`statistic`, 0.001),
+    `p (signif.)` = scales::pvalue(`p.value`)  %+% " " %+% pstars(`p.value`)
+  ) %>%
+  select(c("Effect", "DF", "SSq", "F", "p (signif.)")) %>%
+  mutate_if(is.character, str_remove_all, "NA") %>%
+  flextable::flextable() %>%
+  flextable::theme_booktabs() %>%
+  flextable::hline(i=c(1, 3), border = officer::fp_border(color = "black", style = "solid", width = 1)) %>%
+  flextable::italic(i=1) %>%
+  flextable::autofit()
+  
+  cat("\n\n")
+  # cat(knit_print(t))
+  print(t)
+  cat("\n\n")
+
+}
+
+for (v in vars) {
+  
+  cat("\n\n")
+  cat( "### Linear model table for " %+% v)
+  cat("\n\n")
+  
+  db <- baza_de_date %>% select(c(v, "Sex", "Varsta", "Group")) %>% set_colnames(c("Y", "Sex", "Varsta", "Group"))
+
+t <- aov(data=db, formula=`Y`~ `Sex`+`Varsta` + `Group`) %>% broom::tidy() %>%
+  mutate(
+    `Effect` = `term`, `DF` = scales::number(`df`, 1), 
+    `SSq` = scales::number(`sumsq`, 0.1),
+    `F` = scales::number(`statistic`, 0.001),
+    `p (signif.)` = scales::pvalue(`p.value`)  %+% " " %+% pstars(`p.value`)
+  ) %>%
+  select(c("Effect", "DF", "SSq", "F", "p (signif.)")) %>%
+  mutate_if(is.character, str_remove_all, "NA") %>%
+  flextable::flextable() %>%
+  flextable::theme_booktabs() %>%
+  flextable::hline(i=c(2, 3), border = officer::fp_border(color = "black", style = "solid", width = 1)) %>%
+  flextable::italic(i=3) %>%
+  flextable::autofit()
+  
+  cat("\n\n")
+  # cat(knit_print(t))
+  print(t)
+  cat("\n\n")
+
+}
+
+v <- "BD"
+db <- baza_de_date %>% select(c(v, "Group", "Sex", "Varsta")) %>% set_colnames(c("Y", "Group", "Sex", "Varsta"))
+aov(data=db, formula=`Y`~`Group`+`Sex`+`Varsta`) %>% broom::tidy()
+aov(data=db, formula=`Y`~ `Sex`+`Varsta` + `Group`) %>% broom::tidy()
+
+lm1 <- lm(data=db, formula=`Y`~`Group`+`Sex`+`Varsta`) 
+lm1 %>% anova() #%>% broom::tidy()
+lm1 %>% car::Anova(type=2)
+lm1 %>% car::Anova(type=3)
+lm(data=db, formula=`Y`~`Group`)  %>% anova() #%>% broom::tidy()
+lm(data=db, formula=`Y`~`Sex`)  %>% anova() 
+lm(data=db, formula=`Y`~`Varsta`)  %>% anova() 
+lm(data=db, formula=`Y`~`Sex` : `Varsta`)  %>% anova() 
+
+
+anova(data=db, formula=`Y`~ `Sex`+`Varsta` + `Group`) %>% broom::tidy()
+```
+
+## Logistic models
+
+```{r fig.height=9, fig.width=9, dpi=144, echo=F, message=F, warning=F, results="asis"}
+
+vars <- c("Durata internarii",
+    "BD", "BD (grupe)", 
+    "BT", "BT (grupe)",
+    "Fosfataza alcalina",  "Fosfataza alcalina (grupe)", 
+    "Gama GT", "Gama GT (grupe)",
+    "GOT", "GOT (grupe)", 
+    "GPT", "GPT (grupe)",
+    "PT (sec)","PT (sec) (grupe)", 
+    "PT (%)", "PT (%) (grupe)", 
+    "INR", "INR (grupe)", 
+    "APTT  (sec)" , "APTT  (sec) (grupe)", 
+    "Creatinina",
+    "hepa cron (B, C, D, ciroza)",
+    "Ciroza",
+    "VHB",
+    "VHC",
+    "Neuro",
+    "Renal",
+    "Diabet zaharat",
+    "Bad outcome",
+    "INR_1.5",
+    "PT_70%",
+    "GOT_350",
+    "GPT_350",
+    "Tulburari coagulare",
+    "Transaminaze 10x")
+
+custom_glm <- function(baza_de_date, v) {
+  db <- baza_de_date %>% select(c(v, "Group", "Sex", "Varsta")) %>%
+    set_colnames(c("Y", "Group", "Sex", "Varsta")) %>%
+    na.omit() %>% mutate(`Group` = fct_rev(`Group`))
+  
+  if (!is.na(metadata$Scale[metadata$Var==v])) if(metadata$Scale[metadata$Var==v]=="log") {
+    db$Y <- log10(db$Y)
+    #cat("\n\n [Log 10 scale] \n\n")
+  }
+  
+  
+  model <- glm(data=db, formula=`Group`~`Y`+`Sex`+`Varsta`, family = "binomial")
+  ci <- confint(model)
+  #print(ci)
+  ci[is.na(ci)] <- 0
+  
+  
+  
+  t <- model %>% broom::tidy() %>% cbind(ci) %>%
+    mutate(
+      `Effect` = `term`,#c("intercept", v, "Sex (M)", "Varsta"),
+      `beta ±SE` = scales::number(`estimate`, 0.001)  %+% " ±" %+% scales::number(`std.error`, 0.01),
+      #`Adj OR` = scales::number(exp(`estimate`), 0.01),
+      `Adj OR` = limit_between(exp(`estimate`), to.string = T),
+      `2.5 %` = limit_between(exp(`2.5 %`), to.string = T),
+      `97.5 %` = limit_between(exp(`97.5 %`), to.string = T),
+      `p (signif.)` = scales::pvalue(`p.value`)  %+% " " %+% pstars(`p.value`)
+    ) %>%
+    select(c("Effect", "beta ±SE", "Adj OR", "p (signif.)", "2.5 %", "97.5 %")) %>%
+    mutate_if(is.character, str_remove_all, "NA") #%>%
+    # flextable::flextable() %>%
+    # flextable::theme_booktabs() %>%
+    # #flextable::hline(i=c(1, 3), border = officer::fp_border(color = "black", style = "solid", width = 1)) %>%
+    # flextable::italic(i=2) %>%
+    # flextable::autofit()
+  
+  t
+}
+
+tl <- list()
+for (v in vars) {
+  
+  cat("\n\n")
+  cat( "### logistic model table for " %+% v)
+  cat("\n\n")
+  
+  if (!is.na(metadata$Scale[metadata$Var==v])) if(metadata$Scale[metadata$Var==v]=="log") {
+    #db$Y <- log10(db$Y)
+    cat("\n\n [Log 10 scale] \n\n")
+  }
+ t <- custom_glm(baza_de_date, v) %>%
+    flextable::flextable() %>%
+    flextable::theme_booktabs() %>%
+    #flextable::hline(i=c(1, 3), border = officer::fp_border(color = "black", style = "solid", width = 1)) %>%
+    flextable::italic(i=2) %>%
+    flextable::autofit()
+  
+  cat("\n\n")
+  # cat(knit_print(t))
+  print(t)
+  cat("\n\n")
+}
+
+# tl[["BD"]]
+
+
+
+
+# v="GPT"
+# 
+# glm(data=db %>% mutate (Y=log10(Y)), formula=`Group`~`Y`+`Sex`+`Varsta`, family = "binomial") %>% broom::tidy() %>% mutate(OR = exp(estimate))
+```
+
+```{r echo=F, fig.height=7, fig.width=7, message=F, warning=F, dpi=144, results="asis", include=T}
+
+custom_glm2 <- function(baza_de_date, v) {
+  db <- baza_de_date %>% select(c(v, "Group", "Sex", "Varsta")) %>%
+    set_colnames(c("Y", "Group", "Sex", "Varsta")) %>%
+    na.omit() %>%
+    mutate_if(is.binary, fct_rev) %>%
+    mutate(`Sex` = fct_rev(`Sex`))
+  
+  if (!is.na(metadata$Scale[metadata$Var==v])) if(metadata$Scale[metadata$Var==v]=="log") {
+    db$Y <- log10(db$Y)
+    #cat("\n\n [Log 10 scale] \n\n")
+  }
+  
+  if (v=="PT (%)") {
+    db$Y <- db$Y/10
+  }
+  
+    if (v=="INR") {
+    db$Y <- db$Y*10
+  }
+  
+  # if (v %in% c("PT (%)", "INR")) {
+  #   db$Y <- scale(db$Y)
+  # }
+  
+  
+  model <- glm(data=db, formula=`Group`~`Sex`+`Varsta`+`Y`, family = "binomial")
+  ci <- confint(model)
+  #print(ci)
+  ci[is.na(ci)] <- 0
+  
+  
+  
+  t <- model %>% broom::tidy() %>% cbind(ci) %>%
+    mutate(
+      `Effect` = `term`,#c("intercept", v, "Sex (M)", "Varsta"),
+      #`beta ±SE` = scales::number(`estimate`, 0.001)  %+% " ±" %+% scales::number(`std.error`, 0.01),
+      #`Adj OR` = scales::number(exp(`estimate`), 0.01),
+      `Adj OR` = exp(`estimate`), #limit_between(exp(`estimate`), to.string = T),
+      `2.5 %` = exp(`2.5 %`), #limit_between(exp(`2.5 %`), to.string = T),
+      `97.5 %` = exp(`97.5 %`), #limit_between(exp(`97.5 %`), to.string = T),
+      `p (signif.)` = scales::pvalue(`p.value`)  %+% " " %+% pstars(`p.value`)
+    ) %>%
+    # select(c("Effect", "Adj OR", "p.value", "p (signif.)", "2.5 %", "97.5 %")) %>%
+    mutate_if(is.character, str_remove_all, "NA") #%>%
+
+  
+  t
+}
+
+
+vars <- c(
+  "GOT", "GOT_350", 
+  "GPT", "GPT_350", 
+  "BD", "BT",
+  "Fosfataza alcalina", "Gama GT",
+  "PT (%)", "PT_70%", 
+  "INR", "INR_1.5",
+  "hepa cron (B, C, D, ciroza)",
+  "Ciroza",
+  "VHB",
+  "Neuro",
+  "Renal",
+  "Diabet zaharat",
+  "Bad outcome")
+
+labels <- c(
+  "AST (IU/L, log10)", "AST > 350", 
+  "ALT (IU/L, log10)", "ALT > 350", 
+  "Direct bilirubin (mg/dL, log10)", "Total bilirubin (mg/dL, log10)",
+  "ALP (IU/L, log10)", "γ-GT (IU/L, log10)",
+  "Prothrombin index (%)", "PT < 70%", 
+  "INR", "INR < 1.5",
+  "Chronic liver disease",
+  "... Liver cirrhosis",
+  "... Hepatitis B coinfection",
+  "Neurologic disease",
+  "Chronic kidney disease",
+  "Diabetes mellitus",
+  "Severe cases"
+  )
+
+tl2 <- list()
+for (v in vars) {
+  tl2[[v]] <- custom_glm2(baza_de_date, v) %>% filter(startsWith(`Effect`, "Y")) %>%
+    mutate(`Effect` = v)
+}
+# tl2[["PT_70%"]]
+td2 <- rbind_list(tl2) %>%  
+  mutate(low  = limit_between(`2.5 %`,  low =  1/32, to.string = F),
+         high = limit_between(`97.5 %`, high = 32,   to.string = F),
+         p_low =  ifelse(low  == 1/32, "≺",  "|"),
+         p_high = ifelse(high == 32,   "≻", "|"))
+# td2$`Effect` <- labels
+
+# hist(scale(baza_de_date$INR))
+
+```
+
+```{r echo=F, fig.height=4, fig.width=8, message=F, warning=F, dpi=300, results="asis", include=T}
+
+td3 <- td2 %>% filter(`Effect` %in% c(
+  "hepa cron (B, C, D, ciroza)",
+  "Ciroza",
+  "VHB",
+  "Neuro",
+  "Renal",
+  "Diabet zaharat",
+  "Bad outcome"))
+
+td3$`Label` <- c(
+  "Chronic liver disease",
+  "... Liver cirrhosis",
+  "... Hepatitis B coinfection",
+  "Neurologic disease",
+  "Chronic kidney disease",
+  "Diabetes mellitus",
+  "Additional treatment needed\n(ribavirin / plasma)")
+
+td3$`Label` <- c(
+  "Boli cronice de ficat",
+  "... Ciroză hepatică",
+  "... Coinfecție: hepatită B",
+  "Boli neurologice",
+  "Boli cronice renale",
+  "Diabet zaharat",
+  "Tratament adițional necesar\n(ribavirină / plasmă)")
+
+td3$`Summary` <- c(
+  "27.1% / 3.9% ***", 
+  "\t12.5% / 0.7% ***", 
+  "\t12.5% / 2.6% **" ,
+  "12.5% / 1.3% ***",
+  "10.4% / 1.3% ***", 
+  "20.8% / 5.9% ***",
+  "18.8% / 3.3% ***")
+
+vars <- c("Group", td3$`Effect`[-c(2, 3)])
+db <- baza_de_date %>% select(vars) %>%
+    set_colnames(make.names(vars)) %>%
+    na.omit() %>% mutate_all(fct_rev)
+model <- glm(data=db, formula="Group~" %+% paste(make.names(vars)[-1], collapse="+"), family = "binomial") 
+ci <- confint(model)
+model %<>% #car::vif()
+  broom::tidy() %>%
+  cbind(ci) %>%
+  mutate(
+      `Effect` = `term`,#c("intercept", v, "Sex (M)", "Varsta"),
+      `Adj OR` = exp(`estimate`),
+       `2.5 %` = exp(`2.5 %`), #limit_between(exp(`2.5 %`), to.string = T),
+      `97.5 %` = exp(`97.5 %`), #limit_between(exp(`97.5 %`), to.string = T),
+      `p (signif.)` = scales::pvalue(`p.value`)  %+% " " %+% pstars(`p.value`)
+    ) %>% 
+  mutate_if(is.character, str_remove_all, "NA") %>%
+  filter(`Effect` != "(Intercept)") %>%
+    mutate(`Effect` = vars[-1],
+           low  = limit_between(`2.5 %`,  low =  1/32, to.string = F),
+           high = limit_between(`97.5 %`, high = 32,   to.string = F),
+           p_low =  ifelse(low  == 1/32, "≺",  "|"),
+           p_high = ifelse(high == 32,   "≻", "|"))
+model$Label <- td3$Label[-c(2, 3)]
+model %<>% bind_rows(data.frame(`Effect` = c("Ciroza","VHB"), Label = td3$`Label`[2:3]))
+model$Effect <- factor(model$Effect, levels = td3$`Effect`) 
+model %<>% arrange(`Effect`)
+
+univar <- data.frame()
+for (v in td3$`Effect`) {
+  ft <- fisher.test(baza_de_date$Group, baza_de_date[[v]])
+  univar %<>% rbind(data.frame(`Effect` = v, 
+                               `Adj OR` = ft$estimate,
+                               `2.5 %` = ft$conf.int[1], `92.5 %` = ft$conf.int[2],
+                               `p.value` = ft$p.value))
+}
+univar %<>% set_colnames(c("Effect", "Adj OR", "2.5 %", "97.5 %", "p.value"))  %>% 
+  mutate(
+    `p (signif.)` = scales::pvalue(`p.value`)  %+% " " %+% pstars(`p.value`),
+    low  = limit_between(`2.5 %`,  low =  1/32, to.string = F),
+    high = limit_between(`97.5 %`, high = 32,   to.string = F),
+    p_low =  ifelse(low  == 1/32, "≺",  "|"),
+    p_high = ifelse(high == 32,   "≻", "|")
+
+)
+
+p <- td3 %>%
+  ggplot(aes(y=`Effect`, x=`Adj OR`)) +
+  scale_y_discrete(limits=rev(td3$`Effect`), labels = rev(td3$`Label`)) +
+  geom_vline(xintercept = 1, size=3, color="white") + geom_vline(xintercept = 1, size=0.5, color="grey30") +
+  
+  # adj: sex & age
+  geom_point(size=2, color="brown")+
+  geom_errorbarh(aes(xmin=`low`, xmax=`high`), height=0, size=1, color="brown")  +
+  geom_point(aes(x=`low`), size=2.5, shape=td3$p_low, color="brown")  +
+  geom_point(aes(x=`high`), size=2.5, shape=td3$p_high, color="brown")  +
+  geom_text(aes(label="bold(" %+% scales::number(`Adj OR`, 0.01) %+% ")" %+%
+                  " ~~ (" %+% scales::number(`2.5 %`, 0.01) %+% " - " %+% scales::number(`97.5 %`, 0.01) %+% ")"),
+            vjust=-0.2, size=2.75, parse=T) +
+  
+  # adj: comorbidities
+  geom_point(size=2, color="blue", data=model, position = position_nudge(y=-0.15))+
+  geom_errorbarh(aes(xmin=`low`, xmax=`high`), data=model, height=0, size=0.33, color="blue", position = position_nudge(y=-0.15))  +
+  geom_point(aes(x=`low`), data=model, size=2.5, shape=model$p_low, color="blue", position = position_nudge(y=-0.15))  +
+  geom_point(aes(x=`high`), data=model, size=2.5, shape=model$p_high, color="blue", position = position_nudge(y=-0.15))  +
+  
+  # univariate
+  geom_point(size=2, color="black", data=univar, position = position_nudge(y=-0.3))+
+  geom_errorbarh(aes(xmin=`low`, xmax=`high`), data=univar, height=0, size=0.33, color="black", position = position_nudge(y=-0.3))  +
+  geom_point(aes(x=`low`), data=univar, size=2.5, shape=univar$p_low, color="black", position = position_nudge(y=-0.3))  +
+  geom_point(aes(x=`high`), data=univar, size=2.5, shape=univar$p_high, color="black", position = position_nudge(y=-0.3))  +
+  
+  
+  
+  # annotate("text", label=c("Hepatitis E / A\n(%, signif.)", "(Age & Sex)", "(Comorbidities)"),
+  annotate("text", label=c("Hepatită E / A\n(%, semnif.)", "(Vârsta & Sex)", "(Comorbiditâți)"), 
+           x=c(1/3, 45, 110), y=nrow(td3)+1, size=3, hjust=0.5, vjust=0, color=c("black", "brown", "blue"))+
+  # annotate("text", label=c("Adj. p-values:"),
+  annotate("text", label=c("valori p ajustate:"), 
+           x=45, y=nrow(td3)+1.5, size=3, hjust=0.5, vjust=0)+
+  geom_hline(yintercept = nrow(td3)+0.8, size=0.25, linetype="dashed") +
+  geom_text(aes(label=`Summary`), x=log10(1/3), size=3, hjust=0.5, color="black", parse = F) +
+  geom_text(aes(label=`p (signif.)`), x=log10(44), size=3, hjust=0.5, parse=F, color="brown") +
+  geom_text(aes(label=`p (signif.)`), data=model, x=log10(100), size=3, hjust=0.5, parse=F, color="blue") +
+  # annotate("text", label=c("< hepatitis A", "hepatitis E >"),
+  annotate("text", label=c("< hepatita A", "hepatita E >"), 
+           x=c(1/1.05, 1.05), y=0.2, size=2.75, hjust=c(1, 0))+
+  geom_hline(yintercept = 0.5, size=0.25, linetype="dashed") +
+  
+  # scale_color_manual(values = c(`FALSE` = "blue", `TRUE` = "black"))+
+  # scale_color_manual(values = c(`1` = "blue", `2` = "black"))+
+  # scale_x_log10("Adjusted Odds-Ratio (95% CI)", limits=c(0.0001, 1000),
+  scale_x_log10("Odds-Ratio ajustat (IC 95%)", limits=c(0.0001, 1000),
+                     breaks = c(0.5, 1, 2, 4, 8, 16, 32), minor_breaks = NULL,
+                labels = c("1/2", "❶",
+                           2, 4, 8, 16, 32))+
+  coord_cartesian(xlim = c(1/4, 128), ylim = c(0.5, nrow(td3)+1.5)) +
+  # labs(y=NULL, title = "Comorbidites: Hepatits E vs. Hepatis A, summary and adjusted ORs") +
+  labs(y=NULL, title = "Comorbidități: Hepatita E vs. Hepatia A, sumar și OR ajustat") + 
+  # no_legend +
+  theme(axis.ticks.y = element_blank(), panel.grid.major.y = element_line(linetype="dashed"), 
+        axis.text = element_text(color="black", size=10),
+        axis.title.x = element_text(hjust=0.5, size=10), 
+        plot.title = element_text(size=11))
+
+p
+ggsave("p2_ro.png", p, device = "png", width = 8, height = 4, dpi=300)
+```
+
+```{r echo=F, fig.height=4, fig.width=8, message=F, warning=F, dpi=300, results="asis", include=T}
+
+td3 <- td2 %>% filter(`Effect` %in% c(
+  "GOT", "GOT_350", 
+  "GPT", "GPT_350", 
+  "BD", "BT",
+  "Fosfataza alcalina", "Gama GT",
+  "PT (%)", "PT_70%", 
+  "INR", "INR_1.5"))
+
+# td3$`Label` <- c(
+#   "AST (IU/L)", "", 
+#   "ALT (IU/L)", "", 
+#   "Direct bilirubin (mg/dL)", "Total bilirubin (mg/dL)",
+#   "ALP (IU/L)", "γ-GT (IU/L)",
+#   "Prothrombin index (%)", "", 
+#   "INR ", "")
+
+td3$`Label` <- c(
+  "AST (UI/L)", "",
+  "ALT (UI/L)", "",
+  "Bilirubina directă (mg/dL)", "Bilirubina totală (mg/dL)",
+  "Fosfataza alcalină (UI/L)", "γ-GT (UI/L)",
+  "Index de prothrombină (%)", "",
+  "INR ", "")
+
+
+td3$`Scale` <- c(
+  "10x", "> 350", 
+  "10x", "> 350", 
+  "10x", "10x",
+  "10x", "10x",
+  "10%", "< 70%", 
+  "0.1", "< 1.5")
+
+td3$`Summary` <- c(
+  "145.5 / 870 ***", "35.4% / 65.1% ***", 
+  "401 / 1817.5 ***", "54.2% / 86.8% ***", 
+  "1.24 / 4.9 ***", "1.73 / 5.87 ***",
+  "154.5 / 205 ***", "229 / 246 (ns.)",
+  "88.25 / 72.7 ***", "18.8% / 42.0% ***", 
+  "1.06 / 1.16 ***", "8.3% / 11.2% ***")
+
+p <- td3 %>%
+  ggplot(aes(y=`Effect`, x=`Adj OR`)) +
+  scale_y_discrete(limits=rev(td3$`Effect`), labels = rev(td3$`Label`)) +
+  geom_vline(xintercept = 1, size=3, color="white") + geom_vline(xintercept = 1, size=0.5, color="grey30") +
+  geom_point(aes(color=`p.value`>0.05), size=2)+
+
+  geom_errorbarh(aes(xmin=`low`, xmax=`high`, color=`p.value`>0.05), height=0, size=0.5)  +
+  geom_point(aes(x=`low`,  color=`p.value`>0.05), size=3, shape=td3$p_low)  +
+  geom_point(aes(x=`high`, color=`p.value`>0.05), size=3, shape=td3$p_high)  +
+  
+  geom_text(aes(label="bold(" %+% scales::number(`Adj OR`, 0.01) %+% ")" %+%
+                  " ~~ (" %+% scales::number(`2.5 %`, 0.01) %+% " - " %+% scales::number(`97.5 %`, 0.01) %+% ")"),
+            vjust=-0.2, size=2.75, parse=T) +
+  
+  # annotate("text", label=c("Unit\nfor OR", "Hepatitis E / A\n(Median or %, signif.)", "p-value"), x=c(1/250, 1/128, 3), y=nrow(td3)+1, 
+  annotate("text", label=c("Unitate\npt. OR", "Hepatita E / A\n(Mediana sau %, semnif.)", "valoare p"), x=c(1/250, 1/128, 3), y=nrow(td3)+1,
+           size=3, hjust=c(0, 0, 0), vjust=0)+
+  geom_hline(yintercept = nrow(td3)+0.8, size=0.25, linetype="dashed") +
+  geom_text(aes(label=`Scale`), x=log10(1/250), size=3, hjust=0, color="black", parse = F) +
+  geom_text(aes(label=`Summary`), x=log10(1/128), size=3, hjust=0, color="black", parse = F) +
+  geom_text(aes(label=`p (signif.)`), x=log10(3), size=3, hjust=0, parse=F) +
+  # annotate("text", label=c("Higher values in in patients with:\t< hepatitis A", "hepatitis E >"), x=c(1/1.05, 1.05), y=0, size=2.75, hjust=c(1, 0))+
+  annotate("text", label=c("Valori mai mari la pacienții cu:\t< hepatită A", "hepatită E >"), x=c(1/1.05, 1.05), y=0, size=2.75, hjust=c(1, 0))+
+  geom_hline(yintercept = 0.5, size=0.25, linetype="dashed") +
+  
+  scale_color_manual(values = c(`FALSE` = "blue", `TRUE` = "black"))+
+  # scale_x_log10("Adjusted Odds-Ratio (95% CI)", limits=c(0.0001, 1000),
+  scale_x_log10("Odds-Ratio ajustat (IC 95%)", limits=c(0.0001, 1000),
+                     breaks = c(1/32, 1/16, 1/8, 0.25, 0.5, 1, 2), minor_breaks = NULL,
+                labels = c("1/32", "1/16", "1/8", "1/4", "1/2", "❶", 2)) +
+  coord_cartesian(xlim = c(1/200, 5), ylim = c(0, nrow(td3)+2)) +
+  # labs(y=NULL, title = "Laboratory parameters: Hepatitis E vs. Hepatitis A, summary and OR adjusted for Sex & Age") +
+  labs(y=NULL, title = "Parametri de laborator: Hepatita E vs. Hepatita A, sumar și OR ajustat pentru Sex & Vârstă") + 
+  no_legend +
+  theme(axis.ticks.y = element_blank(), panel.grid.major.y = element_line(linetype="dashed"), 
+        axis.text = element_text(color="black", size=10),
+        axis.title.x = element_text(hjust=0.5, size=10), 
+        plot.title = element_text(size=11))
+
+p
+
+ggsave("p1_ro.png", p, device = "png", width = 8, height = 4, dpi=300)
+
+
+```
+
+## Table 1 extended
+
+```{r fig.height=9, fig.width=9, dpi=144, echo=F, message=F, warning=F, results="asis"}
+
+
+vars <- c("Durata internarii",
+    "BD", "BD (grupe)", 
+    "BT", "BT (grupe)",
+    "Fosfataza alcalina",  "Fosfataza alcalina (grupe)", 
+    "Gama GT", "Gama GT (grupe)",
+    "GOT", "GOT (grupe)", 
+    "GPT", "GPT (grupe)",
+    "PT (sec)","PT (sec) (grupe)", 
+    "PT (%)", "PT (%) (grupe)", 
+    "INR", "INR (grupe)", 
+    "APTT  (sec)" , "APTT  (sec) (grupe)", 
+    "Creatinina",
+    "hepa cron (B, C, D, ciroza)",
+    "Ciroza",
+    "VHB",
+    "VHC",
+    "Neuro",
+    "Renal",
+    "Diabet zaharat",
+    "Bad outcome",
+    "INR_1.5",
+    "PT_70%",
+    "GOT_350",
+    "GPT_350",
+    "Tulburari coagulare",
+    "Transaminaze 10x")
+
+# v="GOT"
+#v = "GOT (grupe)"
+
+var_labels <- metadata.var_to_labels(vars, metadata)
+
+df <- attr(t1, "df")
+df$`OR (MV)` = as.character(rep(NA, nrow(df)))
+
+df$`LCL` = as.character(rep(NA, nrow(df)))
+df$`UCL` = as.character(rep(NA, nrow(df)))
+#df
+
+for (v in vars) {
+  var_label <- metadata.var_to_labels(v, metadata)
+  
+  t <- custom_glm(baza_de_date, v) %>%
+    mutate(`var` = v, `label` = var_label) %>% 
+    filter(substr(`Effect`, 1, 1) == "Y") %>%
+    mutate(`Adj OR` = ifelse(`Effect`=="Yno",
+                             ifelse(`Adj OR`==">1000", "<0.001", ifelse(`Adj OR`=="<0.001", ">1000", limit_between(1/as.numeric(`Adj OR`)))),
+                             `Adj OR` ) ) %>%
+    mutate(`LCL` = ifelse(`Effect`=="Yno",
+                             ifelse(`2.5 %`==">1000", "<0.001", ifelse(`2.5 %`=="<0.001", ">1000", limit_between(1/as.numeric(`2.5 %`)))),
+                             `2.5 %` ) ) %>%
+    mutate(`UCL` = ifelse(`Effect`=="Yno",
+                             ifelse(`97.5 %`==">1000", "<0.001", ifelse(`97.5 %`=="<0.001", ">1000", limit_between(1/as.numeric(`97.5 %`)))),
+                             `97.5 %` ) ) %>%
+    # mutate(`Adj OR` = ifelse(`Adj OR`==">1000", "<0.001", 
+    #                          ifelse(`Adj OR`=="<0.001", ">1000", 
+    #                                 limit_between(1/as.numeric(`Adj OR`))
+    #                                )
+    #                          ) 
+    #        ) %>%
+    mutate(`OR`  = paste0(`Adj OR`, " (p=", `p (signif.)`, ")") %>% str_replace_all("=<", "<")) 
+  
+  selected_rows_in_df <- which(df$Factor==var_label)
+  if (!is.na( df$Levels[selected_rows_in_df][1] ))
+    if ( df$Levels[selected_rows_in_df][1] == "M (min:max)" ) 
+      selected_rows_in_df <- selected_rows_in_df[1]
+  #df$`OR (MV)`[rev(selected_rows_in_df)[1:nrow(t)]] <- rev(t$`OR`)
+  df$`OR (MV)`[selected_rows_in_df[1:nrow(t)]] <- t$`OR`
+  df$`LCL`[selected_rows_in_df[1:nrow(t)]] <- t$`LCL`
+  df$`UCL`[selected_rows_in_df[1:nrow(t)]] <- t$`UCL`
+  
+  
+}
+
+df
+
+df %>% write.csv("tab2extended.csv")
+```
+
+## Reg. log. MV laborator
+
+```{r fig.height=4, fig.width=4, dpi=144, echo=F, message=F, warning=F, results="asis"}
+
+vars <- c("Group",
+          "Sex",
+    "Varsta", 
+    "BD", 
+    #"BT", 
+    "Fosfataza alcalina", 
+    "Gama GT", 
+    "GOT", #AST
+    "GPT", #ALT
+    #"PT (%)", 
+    "INR")
+
+db <- baza_de_date %>% select(vars) %>%
+    set_colnames(make.names(vars)) %>%
+    na.omit() %>% 
+  mutate(`ASTALT` = (`GOT`+`GPT`)/2) %>% select(-c("GOT", "GPT"))  %>%
+  mutate_if(is.numeric, log10) %>%
+  #mutate_at(c("PT....", "INR"), function(x) {10^x}) %>%
+  mutate_at(c("INR"), function(x) {10^x}) %>%
+  mutate(`Group` = fct_rev(`Group`))
+
+glm(data=db, formula="Group~" %+% paste(make.names(colnames(db))[-1], collapse="+"), family = "binomial") %>% 
+  #step() %>% 
+  #car::vif()
+  broom::tidy() %>%
+    mutate(
+      `Effect` = `term`,#c("intercept", v, "Sex (M)", "Varsta"),
+      `beta ±SE` = scales::number(`estimate`, 0.001)  %+% " ±" %+% scales::number(`std.error`, 0.01),
+      #`Adj OR` = scales::number(exp(`estimate`), 0.01),
+      `Adj OR` = limit_between(exp(`estimate`), to.string = T),
+      `p (signif.)` = scales::pvalue(`p.value`)  %+% " " %+% pstars(`p.value`)
+    ) %>% select(c("Effect", "beta ±SE", "Adj OR", "p (signif.)")) %>%
+  #mutate(`Effect` = metadata.var_to_labels(vars %>% str_replace_all("Group", "(intercept)"), metadata) ) %>% 
+  flextable::flextable() 
+
+
+# plot(baza_de_date$INR, baza_de_date$`PT (%)`, col=baza_de_date$Group)
+
+```
+
+## Reg. log. MV comorbiditati
+
+```{r fig.height=9, fig.width=9, dpi=144, echo=F, message=F, warning=F, results="asis"}
+
+vars <- c("Group",
+    "hepa cron (B, C, D, ciroza)",
+    "Neuro",
+    "Renal",
+    "Diabet zaharat",
+    "Bad outcome")
+
+db <- baza_de_date %>% select(vars) %>%
+    set_colnames(make.names(vars)) %>%
+    na.omit() %>% mutate_all(fct_rev)
+
+model <- glm(data=db, formula="Group~" %+% paste(make.names(vars)[-1], collapse="+"), family = "binomial") 
+ci <- confint(model)
+
+model %>% #car::vif()
+  broom::tidy() %>%
+  cbind(ci) %>%
+  mutate(
+      `Effect` = `term`,#c("intercept", v, "Sex (M)", "Varsta"),
+      `beta ±SE` = scales::number(`estimate`, 0.001)  %+% " ±" %+% scales::number(`std.error`, 0.01),
+      #`Adj OR` = scales::number(exp(`estimate`), 0.01),
+      `Adj OR` = limit_between(exp(`estimate`), to.string = T) %+%
+        " [" %+% limit_between(exp(`2.5 %`), to.string = T) %+%
+        " to " %+% limit_between(exp(`97.5 %`), to.string = T) %+% "]",
+      `p (signif.)` = scales::pvalue(`p.value`)  %+% " " %+% pstars(`p.value`)
+    ) %>% 
+  select(c("Effect", "beta ±SE", "Adj OR", "p (signif.)")) %>%
+  mutate(`Effect` = metadata.var_to_labels(vars %>% str_replace_all("Group", "(intercept)"), metadata) ) %>% 
+  flextable::flextable() 
+
+
+```
+
+# Table 2
+
+```{r fig.height=9, fig.width=9, dpi=144, echo=F, message=F, warning=F, results="asis"}
+
+cat("\n\n")
+cat(tab_caption("t2.2","Summary table for the hepatitis E patients by gender by several predictors."))
+cat("\n\n")
+
+baza_de_date %>% filter(Group=="E") %>%
+  select(
+    #`Group`,
+    `Sex`,
+    `Varsta`, `Varsta (grupe)`,
+    # `Durata bolii`, 
+    `Durata internarii`,
+    `BD`,`BD (grupe)`, `BT`, `BT (grupe)`,
+    `Fosfataza alcalina`, `Fosfataza alcalina (grupe)`, `Gama GT`, `Gama GT (grupe)`,
+    `GOT`, `GOT (grupe)`, `GPT`, `GPT (grupe)`,
+    `PT (sec)`,`PT (sec) (grupe)`, `PT (%)`, `PT (%) (grupe)`, `INR`, `INR (grupe)`, `APTT  (sec)`, `APTT  (sec) (grupe)`,
+    `hepa cron (B, C, D, ciroza)`,  
+    `Ciroza`,
+    `VHB`,
+    `VHC`,
+    `Neuro`,
+    `Renal`,
+    `Diabet zaharat`,
+    `Bad outcome`
+  ) %>%
+  make_summary_table("Sex", g.rows = c("med_range", "mean_sd"),  metadata = metadata, 
+                     header=list(lang="en", columns = c('Factor', "Levels", "Total", "Statistics")),
+                     footnote = list(lang="en", values=c("med_range", "mean_sd", "OR/RR", "V")))
+
+```
+
+# Table 3
+
+```{r fig.height=9, fig.width=9, dpi=144, echo=F, message=F, warning=F, results="asis"}
+
+cat("\n\n")
+cat(tab_caption("t2.2","Summary table for the hepatitis A patients by gender."))
+cat("\n\n")
+
+baza_de_date %>% filter(Group=="A") %>%
+  select(
+    #`Group`,
+    `Sex`,
+    `Varsta`, `Varsta (grupe)`,
+    # `Durata bolii`, 
+    `Durata internarii`,
+    `BD`,`BD (grupe)`, `BT`, `BT (grupe)`,
+    `Fosfataza alcalina`, `Fosfataza alcalina (grupe)`, `Gama GT`, `Gama GT (grupe)`,
+    `GOT`, `GOT (grupe)`, `GPT`, `GPT (grupe)`,
+    `PT (sec)`,`PT (sec) (grupe)`, `PT (%)`, `PT (%) (grupe)`, `INR`, `INR (grupe)`, `APTT  (sec)`, `APTT  (sec) (grupe)`,
+    `hepa cron (B, C, D, ciroza)`,  
+    `Ciroza`,
+    `VHB`,
+    `VHC`,
+    `Neuro`,
+    `Renal`,
+    `Diabet zaharat`,
+    `Bad outcome`
+  ) %>%
+  make_summary_table("Sex", g.rows = c("med_range", "mean_sd"),  metadata = metadata, 
+                     header=list(lang="en", columns = c('Factor', "Levels", "Total", "Statistics")),
+                     footnote = list(lang="en", values=c("med_range", "mean_sd", "OR/RR", "V")))
+
+```
+
+
+# Abstract
+
+Hepatitis E 
+A: 1.64 [IQR=0.48, 5.59], E: 7.74 [IQR=3.81, 10.38]
+
+
+The number of reported cases of hepatitis E has increased across Europe while consumption of pork did not. 
+In Romania, patients diagnosed with Hepatitis A or E require mandatory hospitalization. Romania does not record surveillance data on hepatitis E.
+
+Methods: We included all patients in the evidence of the Infectious Diseases Hospital in Cluj-Napoca, Romania diagnosed with hepatitis E during September 2017- December 2018 (29 cases) and an equal number of randomly selected patients diagnosed with hepatitis A in the same hospital and period, matching for age and gender.
+
+Results: Men were 58.6% of the cases. The median age of hepatitis E patients was 45.6, IQR=36.3-60.4 while the maximum incidence of hepatitis A in Romania is reported in children aged 5-9. Hepatitis E patients presented with signifficantly lower median 
+GOT (160, IQR=74-423 vs. 859, IQR=398-1786, p<0.001), GPT(503, IQR=123-868 vs. 1844,IQR=1037-2375, p<0.001),
+prothombin index (85.1%, IQR=73.7-106.3 vs. 76.75%, IQR=62.375-89.025, p=0.014),
+prothombin time (11.7, IQR=10.7-12.8 vs. 12.75, IQR=11.75-14.05, p=0.008),
+INR (1.08, IQR=0.97-1.15 vs. 1.13, IQR=1.05-1.265, p=0.039),
+total billirubin (7.74, IQR=3.81-10.38 vs. 1.64, IQR=0.48-5.59, p=0.002) and 
+direct billirbin (1.18, IQR=0.32-4.59 vs. 5.39, IQR=2.82-9.32, p=0.001) as well as lower
+prevalence of jaundice (69.0 vs. 96.6%, OR=0.08, p=0.012), compared to patients with hepatitis A.
+Although not statistically significant, we found relatively more HBs-Antigen-positive patients with hepatitis E than A (14.8% vs. 3.4%, OR=4.76, p=0.185).
+The median hospitalization was statistically similar for both diseases (E: 10 days, IQR=7-14 vs. A: 12 days, IQR=8-15, p=0.224).
+Only 2 hepatitis E patients reported recent travels abroad. One of the patients with hepatitis E died due to preesisting conditions. 
+
+
+# extra
+
+```{r echo=F, fig.height=2.5, fig.width=1.125, message=FALSE, warning=FALSE, dpi=144, results="asis"}
+# baza_de_date %>% 
+  # filter(`Matching`=="yes") %>% 
+  # my_box(y="Durata bolii", x="Group", z = "Sex", metadata = metadata, range = F, ) +
+#   scale_x_discrete(labels=c("E", "A"))+
+#   labs(x = "Hepatitis", y='Pre-hospital symptomatic period (days)', main=NULL) + #legend.top_right
+#   theme(legend.position = c(1, 1), legend.justification = c(1,1), legend.direction = "vertical", legend.key.size = unit(4, "mm"))
+# 
+
+```
+
+# poza
+
+```{r fig.height=2.5, fig.width=1.125, dpi=144, echo=F, message=F, warning=F, results="asis"}
+#, fig.cap=fig_caption("Fig2","(diamords denote means, p-value according to Wilcoxon rank sum test with continuity correction.)")
+
+db <- baza_de_date %>% filter(Group=="E")
+wt <- wilcox.test(db$`Varsta`~db$`Sex`)$p.value
+# db %>% group_by(`Sex`) %>% 
+#   dplyr::summarize(N=n(), M=mean(Varsta), SD=sd(Varsta), 
+#                    Q0=min(Varsta), Q1=quantile(Varsta, 0.25), Q2=median(Varsta), Q3=quantile(Varsta, 0.75), Q4=max(Varsta))
+
+db %>% my_box(y="Varsta", x="Sex", metadata = metadata, range=F) +
+  labs(subtitle = scales::pvalue(wt, add_p=T) ) + no_legend +
+  theme(
+    plot.margin = margin(t=1, b = 1, r = 1, l = 10, unit = "pt"),
+    panel.grid.major.x = element_blank())
+
+
+wt <- wilcox.test(baza_de_date$`Varsta`~baza_de_date$`Sex`)$p.value
+
+
+
+b1 <- baza_de_date %>% my_box(y="Varsta", x="Sex", metadata = metadata, range=F) +
+  labs(subtitle = scales::pvalue(wt, add_p=T) ) + no_legend +
+  theme(
+    plot.margin = margin(t=1, b = 1, r = 1, l = 10, unit = "pt"),
+    panel.grid.major.x = element_blank())
+
+b1
+
+dbm <- baza_de_date #%>% filter(`Matching`=="yes") 
+
+wt <- wilcox.test(dbm$`BT`~dbm$`Group`)$p.value
+
+b2 <- baza_de_date  %>% my_box(y="BT", x="Group", metadata = metadata, range=F) +
+  geom_hline(yintercept = c(1.2),color="red", size=0.25)+
+  scale_x_discrete(labels=c("E", "A"))+
+  scale_fill_viridis_d(alpha = 0.75)+scale_color_viridis_d()+
+  labs(x = "Hepatitis", subtitle = scales::pvalue(wt, add_p=T) ) + no_legend +
+  theme(
+    plot.margin = margin(t=1, b = 1, r = 1, l = 10, unit = "pt"),
+    panel.grid.major.x = element_blank())
+
+b2
+
+wt <- wilcox.test(dbm$`BD`~dbm$`Group`)$p.value
+
+b3 <- baza_de_date  %>% my_box(y="BD", x="Group", metadata = metadata, range=F) +
+  geom_hline(yintercept = c(0.3),color="red", size=0.25)+
+  scale_x_discrete(labels=c("E", "A"))+
+  scale_fill_viridis_d(alpha = 0.75)+scale_color_viridis_d()+
+  labs(x = "Hepatitis", subtitle = scales::pvalue(wt, add_p=T) ) + no_legend +
+  theme(
+    plot.margin = margin(t=1, b = 1, r = 1, l = 10, unit = "pt"),
+    panel.grid.major.x = element_blank())
+
+b3
+
+wt <- wilcox.test(dbm$`GPT`~dbm$`Group`)$p.value
+
+b4 <- baza_de_date %>% my_box(y="GPT", x="Group", metadata = metadata, range=F) +
+  geom_hline(yintercept = c(35, 350),color="red", size=0.25)+
+  scale_x_discrete(labels=c("E", "A"))+
+  scale_fill_viridis_d(alpha = 0.75)+scale_color_viridis_d()+
+  labs(x = "Hepatitis", subtitle = scales::pvalue(wt, add_p=T) ) + no_legend +
+  theme(
+    plot.margin = margin(t=1, b = 1, r = 1, l = 10, unit = "pt"),
+    panel.grid.major.x = element_blank())
+
+b4
+
+wt <- wilcox.test(dbm$`GOT`~dbm$`Group`)$p.value
+
+b5 <- baza_de_date %>% my_box(y="GOT", x="Group", metadata = metadata, range=F) +
+  geom_hline(yintercept = c(35, 350),color="red", size=0.25)+
+  scale_x_discrete(labels=c("E", "A"))+
+  scale_fill_viridis_d(alpha = 0.75)+scale_color_viridis_d()+
+  labs(x = "Hepatitis", subtitle = scales::pvalue(wt, add_p=T) ) + no_legend +
+  theme(
+    plot.margin = margin(t=1, b = 1, r = 1, l = 10, unit = "pt"),
+    panel.grid.major.x = element_blank())
+
+b5
+
+wt <- wilcox.test(dbm$`PT (sec)`~dbm$`Group`)$p.value
+
+b6 <- baza_de_date %>% my_box(y="PT (sec)", x="Group", metadata = metadata, range=F) +
+  geom_hline(yintercept = c(9.2, 13.9),color="red", size=0.25)+
+  scale_x_discrete(labels=c("E", "A"))+
+  scale_fill_viridis_d(alpha = 0.75)+scale_color_viridis_d()+
+  labs(x = "Hepatitis", subtitle = scales::pvalue(wt, add_p=T) ) + no_legend +
+  theme(
+    plot.margin = margin(t=1, b = 1, r = 1, l = 10, unit = "pt"),
+    panel.grid.major.x = element_blank())
+
+b6
+
+wt <- wilcox.test(dbm$`PT (%)`~dbm$`Group`)$p.value
+
+b7 <- baza_de_date %>%  my_box(y="PT (%)", x="Group", metadata = metadata, range=F) +
+  geom_hline(yintercept = c(70,130),color="red", size=0.25)+
+  scale_x_discrete(labels=c("E", "A"))+
+  scale_fill_viridis_d(alpha = 0.75)+scale_color_viridis_d()+
+  labs(x = "Hepatitis", subtitle = scales::pvalue(wt, add_p=T) ) + no_legend +
+  #scale_y_continuous("Prothrombin index (%)", limits=c(10, 130), breaks=seq(0, 200, 25))+
+  theme(
+    plot.margin = margin(t=1, b = 1, r = 1, l = 10, unit = "pt"),
+    panel.grid.major.x = element_blank())
+
+b7
+
+wt <- wilcox.test(dbm$`INR`~dbm$`Group`)$p.value
+
+b8 <- baza_de_date %>% my_box(y="INR", x="Group", metadata = metadata, range=F) +
+  geom_hline(yintercept = c(0.8, 1.2),color="red", size=0.25)+
+  scale_x_discrete(labels=c("E", "A"))+
+  scale_fill_viridis_d(alpha = 0.75)+scale_color_viridis_d()+
+  labs(x = "Hepatitis", subtitle = scales::pvalue(wt, add_p=T) ) + no_legend +
+  #scale_y_continuous("INR", limits=c(0.8, 1.9), breaks=seq(0, 2, 0.2))+
+  theme(
+    plot.margin = margin(t=1, b = 1, r = 1, l = 10, unit = "pt"),
+    panel.grid.major.x = element_blank())
+
+b8
+
+#names(baza_de_date)
+#summary(baza_de_date$`INR`)
+```
+
+
+```{r fig.height=2.5, fig.width=6, dpi=300, echo=F, message=F, warning=F, results="asis"}
+
+cat("\n\n")
+cat(fig_caption("Fig2","(diamords denote means, p-value according to Wilcoxon rank sum test with continuity correction.)"))
+cat("\n\n")
+
+# cowplot::plot_grid(b1, b2, b4, b5, b7,
+#                    nrow=1, align="h", axis="tb")
+
+p <- cowplot::plot_grid(b2 + theme(text=element_text(family="ArialMT")) + labs(x="Hepatita", y="Bilirubina totală (mg/dL)"),
+                        b3 + theme(text=element_text(family="ArialMT")) + labs(x="Hepatita", y="Bilirubina directă (mg/dL)"), 
+                        b4 + theme(text=element_text(family="ArialMT")) + labs(x="Hepatita", y="ALT (UI/L)"), 
+                        b5 + theme(text=element_text(family="ArialMT")) + labs(x="Hepatita", y="AST (UI/L)"), 
+                        b8 + theme(text=element_text(family="ArialMT")) + labs(x="Hepatita", y="INR"),
+                   nrow=1, align="h", axis="tb")  + theme(text=element_text(family="ArialMT"))# %>% 
+  # cowplot::save_plot(plot = p, filename="figure_2_ro.png", nrow = 1, base_height = 2.5, base_width = 6, dpi=300, )
+
+  p
+
+ggsave(filename="figure_2.pdf", device = "pdf", plot = p, width = 6, height = 2.5, units = "in", dpi=300)
+#ggsave(filename="figure_2.cairo.pdf", device = "cairo_pdf", plot = p, width = 6, height = 2.5, units = "in", dpi=300)
+ggsave(filename="figure_2.svg", device = "svg", plot = p, width = 6, height = 2.5, units = "in", dpi=300)
+ggsave(filename="figure_2.png", device = "png", plot = p, width = 6, height = 2.5, units = "in", dpi=300)
+ggsave(filename="figure_2.tiff", device = "tiff", plot = p, width = 6, height = 2.5, units = "in", dpi=300)
+
+```
+
+```{r fig.height=2.5, fig.width=2.5, dpi=300, echo=F, message=F, warning=F, results="asis"}
+
+cat("\n\n")
+cat(fig_caption("Fig1","(diamords denote means, p-value according to Wilcoxon rank sum test with continuity correction.)"))
+cat("\n\n")
+
+# cowplot::plot_grid(b1, b2, b4, b5, b7,
+#                    nrow=1, align="h", axis="tb")
+
+df <- data.frame(`Acute\nhepatitis` = c("E", "A", "B", "C") %>% factor(levels=c("E", "A", "B", "C")),
+                 `2017` = c(1, 88, 12, 1), 
+                 `2018` = c(26, 247, 10, 3),
+                 `2019` = c(21, 79, 9, 2) ) %>% 
+  set_colnames(c("Acute\nhepatitis", 2017:2019)) %>%
+  tidyr::gather("Year", "Cases", -c("Acute\nhepatitis")) %>%
+  group_by(`Year`, `Acute\nhepatitis`) %>%
+  summarise(`Cases` = sum(`Cases`)) %>%
+  mutate(
+    `Relative Freq` = `Cases`/sum(`Cases`),
+    `Freq%` = scales::percent(`Relative Freq`),
+    `Label` = paste(`Cases`, "\n(", `Freq%`, ")", sep="")) 
+
+p1 <- df %>% ggplot(aes(x=`Year`, y=`Cases`, fill = `Acute\nhepatitis`)) +
+  geom_bar(stat="identity", position = "dodge") +
+  geom_text(aes(label=`Freq%`), position = position_dodge2(1), show.legend = F,
+             size=2.75, hjust=-0.1, vjust=0.5, angle=90,
+             label.padding=unit(1, "mm"), label.size = unit(0, "mm"), fill="transparent") +
+  scale_fill_viridis_d(direction = -1)+
+  scale_y_continuous("Cases", limits = c(0, 300), breaks = seq(0, 300, 50)) +
+  no.title.x  + theme(text=element_text(family="ArialMT"))
+
+p1
+
+p2 <- df %>% ggplot(aes(x=`Year`, y=`Relative Freq`, fill = `Acute\nhepatitis`)) +
+  geom_bar(stat="identity", position = "dodge") +
+  geom_text(aes(label=`Cases`), position = position_dodge2(1), show.legend = F,
+             size=2.75, hjust=0.5, vjust=-0.5, #angle=90,
+             label.padding=unit(1, "mm"), label.size = unit(0, "mm"), fill="transparent") +
+  scale_fill_viridis_d(direction = -1)+
+  scale_y_continuous("% Cases", limits = c(0, 1), breaks = seq(0, 1, 0.25), labels=scales::percent) +
+  guides(fill=guide_legend(nrow=2))+
+  legend.top +
+  no.title.x  + theme(text=element_text(family="ArialMT"))
+
+p2
+
+
+p3 <- df %>% ggplot(aes(x=`Year`, y=`Cases`, fill = `Acute\nhepatitis`)) +
+  geom_bar(stat="identity", position = "dodge") +
+  geom_text(aes(label=`Cases`), position = position_dodge2(1), show.legend = F,
+             size=2.75, hjust=0.5, vjust=-0.5, #angle=90,
+             label.padding=unit(1, "mm"), label.size = unit(0, "mm"), fill="transparent") +
+  scale_fill_viridis_d("Hepatită\nacută", direction = -1)+
+  scale_y_continuous("Cazuri", limits = c(0, 300), breaks = seq(0, 300, 50)) +
+  no.title.x  + theme(text=element_text(family="ArialMT"))
+
+p3
+
+# ggsave(filename="figure_1_v1.pdf", device = "pdf", plot = p1, width = 2.5, height = 2.5, units = "in", dpi=300)
+# #ggsave(filename="figure_1.cairo_v1.pdf", device = "cairo_pdf", plot = p, width = , height = 2.5, units = "in", dpi=300)
+# ggsave(filename="figure_1_v1.svg", device = "svg", plot = p1, width = 2.5, height = 2.5, units = "in", dpi=300)
+# ggsave(filename="figure_1_v1.png", device = "png", plot = p1, width = 2.5, height = 2.5, units = "in", dpi=300)
+# ggsave(filename="figure_1_v1.tiff", device = "tiff", plot = p1, width = 2.5, height = 2.5, units = "in", dpi=300)
+# 
+# ggsave(filename="figure_1_v2.pdf", device = "pdf", plot = p2, width = 2.5, height = 2.5, units = "in", dpi=300)
+# #ggsave(filename="figure_1.cairo_v2.pdf", device = "cairo_pdf", plot = p2, width = , height = 2.5, units = "in", dpi=300)
+# ggsave(filename="figure_1_v2.svg", device = "svg", plot = p2, width = 2.5, height = 2.5, units = "in", dpi=300)
+# ggsave(filename="figure_1_v2.png", device = "png", plot = p2, width = 2.5, height = 2.5, units = "in", dpi=300)
+# ggsave(filename="figure_1_v2.tiff", device = "tiff", plot = p2, width = 2.5, height = 2.5, units = "in", dpi=300)
+# 
+# ggsave(filename="figure_1_v3.pdf", device = "pdf", plot = p3, width = 2.5, height = 2.5, units = "in", dpi=300)
+# #ggsave(filename="figure_1.cairo_v3.pdf", device = "cairo_pdf", plot = p3, width = , height = 2.5, units = "in", dpi=300)
+# ggsave(filename="figure_1_v3.svg", device = "svg", plot = p3, width = 2.5, height = 2.5, units = "in", dpi=300)
+# ggsave(filename="figure_1_v3_ro.png", device = "png", plot = p3, width = 2.5, height = 2.5, units = "in", dpi=300)
+# ggsave(filename="figure_1_v3.tiff", device = "tiff", plot = p3, width = 2.5, height = 2.5, units = "in", dpi=300)
+
+
+
+```
+.
