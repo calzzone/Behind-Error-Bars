@@ -1,0 +1,56 @@
+baseURL = "https://www.behinderrorbars.com/"
+languageCode = "en-us"
+title = "Behind Error Bars"
+theme = "mainroad"
+paginate = "10" # Number of posts per page
+
+[Author] # Used in authorbox
+  name = "Alex Istrate"
+  bio = "Alex Istrate's true identity is unknown. Nobody knows it."
+  avatar = "images/avatar.png"
+  
+[Params]
+  subtitle = "Data Analysis" # Subtitle of your site. Used in site header
+  description = "John Doe's Personal blog about everything" # Site description. Used in meta description
+  copyright = "Alex Istrate" # Footer copyright holder, otherwise will use site title
+  readmore = false # Show "Read more" button in list if true
+  authorbox = true # Show authorbox at bottom of pages if true
+  toc = true # Enable Table of Contents
+  post_navigation = true # Show post navigation at bottom of pages if true
+  post_meta = ["date", "categories", "translations"] # Order of post meta information
+  mainSections = ["posts", "blog", "news"] # Specify section pages to show on home page and the "Recent articles" widget
+
+[Params.sidebar]
+  home = "right" # Configure layout for home page
+  list = "left"  # Configure layout for list pages
+  single = false # Configure layout for single pages
+  # Enable widgets in given order
+  widgets = ["search", "recent", "categories", "taglist", "social", "languages"]
+
+[Params.widgets]
+  recent_num = 5 # Set the number of articles in the "Recent articles" widget
+  tags_counter = false # Enable counter for each tag in "Tags" widget
+
+[Params.widgets.social]
+  # Enable parts of social widget
+  facebook = "behinderrbars"
+  linkedin = "alexistrate"
+  github = "calzzone"
+  rpubs = "alex_istrate"
+  email = "alex.istate.ro@gmail.com"
+
+[[Params.widgets.social.custom]]
+  title = "Behind Error Bars"
+  url = "https://www.behinderrorbars.com"
+
+
+
+[menu]
+
+  [[menu.main]]
+    identifier = "home"
+    name = "Home"
+    pre = "<i class='fa fa-heart'></i>"
+    url = "/"
+    weight = 1
+
