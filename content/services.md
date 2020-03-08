@@ -40,7 +40,7 @@ This is intended for:
 - preliminary analysis
 - those who know statistics, and just want access to my software.
 
-Typically 50 euro.
+<!-- Typically 50 euro. -->
 
 **2. Just right**
 
@@ -52,7 +52,7 @@ I will do the Results section in totality (including basic interpretation of the
 
 I will format the results according to your institution's templates (hopefully I already have them), and I will send you the output as `.docx` and `.html`.
 
-Typically 100 euro.
+<!-- Typically 100 euro. -->
 
 **3. Just right, with little data**
 
@@ -63,7 +63,7 @@ Intended for:
 
 I expect that you only have a few variables or can be batch procesed (ex. all are numeric, laboratory values and you want a correlation matrix). I may finish the project in a matter of hours or even in real-time.
 
-Typically 50 euro.
+<!-- Typically 50 euro. -->
 
 **4. Thorough and polished**
 
@@ -79,7 +79,7 @@ There is no typical price. We have to negociate. I may start with 100 euro for a
 
 ## Presentations and posters
 
-If it is just a new output of project that I have already worked on, I will offer a discount. For example, for a typical graduation thesis, I will ask for only 25 euro. If it is a new project, I will usually place it under one of the service above.
+If it is just a new output of project that I have already worked on, I will offer a discount. For example, for a typical graduation thesis, I will ask for half the price. If it is a new project, I will usually place it under one of the service above.
 
 ## Other services
 
