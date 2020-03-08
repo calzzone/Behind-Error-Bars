@@ -28,3 +28,35 @@ If you send me identifiable information, I will have to delete it.
 If we start collaborating, I have to know who you are and how to contact eachother. After that, I will remove your contact info and your data. 
 
 
+# Website settings
+
+For the paranoid, here are my settings:
+
+```toml
+[privacy]
+  [privacy.googleAnalytics]  
+    disable = false
+    anonymizeIP = true
+    respectDoNotTrack = true
+    useSessionStorage = true
+  [privacy.youtube]
+    disable = true
+    privacyEnhanced = true
+  [privacy.disqus]
+    disable = true
+  [privacy.instagram]
+    disable = true
+#     simple = true
+  [privacy.twitter]
+    disable = true
+    enableDNT = true
+#     simple = false
+  [privacy.vimeo]
+    disable = true
+#     simple = false
+
+```
+
+See Hugo's [documentation](https://gohugo.io/about/hugo-and-gdpr/) for explanations. I kept Google Analytics for research purposes, but I configured to respect all privacy settings. I don't use the other services, so I disabled them. Websites built on Hugo don't collect your web traffic data.
+
+

@@ -576,7 +576,7 @@ td2 <- rbind_list(tl2) %>%
          p_low =  ifelse(low  == 1/32, "≺",  "|"),
          p_high = ifelse(high == 32,   "≻", "|"))
 # td2$`Effect` <- labels
-
+  
 # hist(scale(baza_de_date$INR))
 
 ```

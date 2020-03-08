@@ -44,6 +44,28 @@ googleAnalytics = "UA-144379931-1" # Enable Google Analytics by entering your tr
   title = "Behind Error Bars"
   url = "https://www.behinderrorbars.com"
 
+# GDPR: not quite paranoid mode
+[privacy]
+  [privacy.googleAnalytics]
+    anonymizeIP = true
+    disable = false
+    respectDoNotTrack = true
+    useSessionStorage = true
+  [privacy.youtube]
+    disable = true
+    privacyEnhanced = true
+  [privacy.disqus]
+    disable = true
+  [privacy.instagram]
+    disable = true
+#     simple = true
+  [privacy.twitter]
+    disable = true
+    enableDNT = true
+#     simple = false
+  [privacy.vimeo]
+    disable = true
+#     simple = false
 
 
 [menu]
@@ -55,3 +77,5 @@ googleAnalytics = "UA-144379931-1" # Enable Google Analytics by entering your tr
     url = "/"
     weight = 1
 
+    
+    
