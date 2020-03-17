@@ -24,7 +24,7 @@ Epidemiologist turned freelance data analyst. I am one person. You can buy me a 
 
 My favorite mode of communication for any business-related topics.
 
-alex.istrate.ro@gmail.com
+alex@behinderrorbars.com
 
 # Contact me by phone
 

@@ -7,12 +7,12 @@ googleAnalytics = "UA-144379931-1" # Enable Google Analytics by entering your tr
 
 [Author] # Used in authorbox
   name = "Alex Istrate"
-  bio = "Alex Istrate's true identity is unknown. Nobody knows it."
-  avatar = "images/avatar.png"
+  bio = "Epidemiologist turned freelance data analyst. I am one person. You can buy me a beer in Cluj-Napoca, Romania."
+  avatar = "/img/avatar.png"
   
 [Params]
-  subtitle = "Data Analysis" # Subtitle of your site. Used in site header
-  description = "John Doe's Personal blog about everything" # Site description. Used in meta description
+  subtitle = "Data Analysis Services and Opinions" # Subtitle of your site. Used in site header
+#   description = "John Doe's Personal blog about everything" # Site description. Used in meta description
   copyright = "Alex Istrate" # Footer copyright holder, otherwise will use site title
   readmore = false # Show "Read more" button in list if true
   authorbox = true # Show authorbox at bottom of pages if true
@@ -38,7 +38,7 @@ googleAnalytics = "UA-144379931-1" # Enable Google Analytics by entering your tr
   linkedin = "alexistrate"
   github = "calzzone"
   rpubs = "alex_istrate"
-  email = "alex.istate.ro@gmail.com"
+  email = "alex@behinderrorbars.com"
 
 [[Params.widgets.social.custom]]
   title = "Behind Error Bars"

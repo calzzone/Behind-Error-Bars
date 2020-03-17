@@ -2,7 +2,7 @@
 title: "Hello World"
 date: 2020-03-06T22:59:05+02:00
 linktitle: Hello World
-description: Hello World.
+description: Every new computer-related thing need to start with a Hello World! More stuff coming soon!
 categories:
   - "Posts"
 tags:
@@ -17,8 +17,8 @@ Every new computer-related thing need to start with a Hello World! More stuff co
 
 This is my website. I made it for 2 reasons:
 
-1. bragging rights
-2. make a business around it (hopefully)
+1. bragging rights,
+2. make a business around it (hopefully).
 
 This is my second atempt for a website. The first one was a Wordpress blog and it was slow. Then, I found out about Hugo static websites.
 

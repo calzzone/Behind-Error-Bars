@@ -1,0 +1,246 @@
+---
+title: "Untitled"
+author: "Alex Istrate"
+date: "3/16/2020"
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r fig.height=1.75, fig.width=20, dpi=300, echo=F, message=F, warning=F, results="asis", eval=F, include=F}
+# "E: ≤1985", "D: [1986-1990]", "C: [1991-1994]",  "B: [1995-2000]",  "A2: [2001-2006]", "A1: ≥2007"
+
+median_censor <- function(tn, tc) {
+  df <- data.frame(tn = tn, tc = tc) %>%
+    mutate (
+      tl = ifelse( !is.na(`tn`), `tn`, # event at time
+                   ifelse(`tc` %in% c("0", "< 3", "< 5"), NA, # left censor
+                          ifelse(`tc` == "> 300", 300, # right censor
+                                 ifelse(`tc` == "> 500", 500, # right censor
+                                        ifelse(`tc` == "> 1000", 1000, # right censor
+                                               NA) # 1000
+                                        ) # 500
+                                 ) # 300
+                          ) # left
+                   ) %>% as.numeric(), # numeric
+      
+      tr = ifelse( !is.na(`tn`), `tn`, # event at time
+                   ifelse(`tc` %in% c("> 300", "> 500", " > 1000"), NA, # right censor
+                          ifelse(`tc` == "0", 0.001, # left censor
+                                 ifelse(`tc` == "< 3", 3, # left censor
+                                        ifelse(`tc` == "< 5", 5, # left censor
+                                               NA) # 5
+                                        ) # 3
+                                 ) # 0
+                          ) # right
+                   ) %>% as.numeric() # numeric
+            ) # end mutate
+  
+  
+  if(!is.numeric(df$`tl`)) print(df)
+  if(!is.numeric(df$`tr`)) print(df)
+  
+  fit <- survfit(formula=Surv(time  = `tl`, time2 = `tr`, type  = "interval2")~1, data = df ) 
+  as.numeric(summary(fit)$table["median"] )
+  
+  # sf <- summary(fit)
+  # points <- c(3, 10, 100)
+  # sf2 <- summary(fit,time=points)
+  # Median = as.vector(summary(fit)$table["median"]),
+}
+
+# median_censor(copii_baza_de_date$`Titru numeric`, copii_baza_de_date$`Titru categ`)
+calculate_aggregate <- function(args, agg_fun="protective") {
+  switch (agg_fun,
+    "protective" = sum(args$pt == "da") / length(args$pt), # x = `Protective titre`, y = `n` # `Protective titre`
+    "detectable" = sum(args$dt == "da") / length(args$dt), # x = `Detectable titre`, y = `n` # `Detectable titre`
+    ">100" = sum(args$t100 == "da") / length(args$t100), # x = `Titre >100`, y = `n` # `Titre >100`
+    "GM" = DescTools::Gmean(args$nt + 0.01, na.rm = T), #  x =`Titru numeric` # `Titre (GM*)`
+    "mean" = mean(args$nt, na.rm = T), #  x =`Titru numeric` # `Titre (mean*)`
+    "median" = median(args$nt, na.rm = T), # x =`Titru numeric` # `Titre (median*)`
+    "median_censored" = median_censor(args$nt, args$ct), # x = `Titru numeric`, y = `Titru categ` # `Titre (median)`
+    NA
+  )
+}
+
+
+lexis1 <- function(baza_de_date, A1A2 = 2007, A2B = 1995, BC = 1991, CD = 1986, agg_fun = "protective") {
+  df_temp <- baza_de_date %>% 
+    group_by(`Age x Year`) %>%
+    mutate(`Age` = `Age`, `Examination Year` = `Examination Year`) %>%
+    summarise(
+      n = n(), 
+      `aggregate_statistic` = calculate_aggregate(
+        args = list(pt = `Protective titre`, dt = `Detectable titre`, t100=`Titre >100`, nt = `Titru numeric`, ct =`Titru categ`),
+        agg_fun=agg_fun),
+      
+      `Examination Year` = `Examination Year`[1], 
+      `Age` = `Age`[1]
+    ) %>% na.omit() %>%
+    arrange(`Age`, `Examination Year`)
+
+  axis.data <- switch (agg_fun,
+    "protective" = list(title="% participants with protective titres", limits=c(0, 1)),
+    "detectable" = list(title="% participants with detectable titres", limits=c(0, 1)),
+    ">100" = list(title="% participants with titres >100", limits=c(0, 1)),
+    "GM" = list(title="Geometric mean (quantitative data only)", limits=c(0, 1000)),
+    "mean" = list(title="Mean titre (quantitative data only)", limits=c(0, 1000)),
+    "median" = list(title="Median titre (quantitative data only)", limits=c(0, 1000)),
+    "median_censored" = list(title="Median titre (quantitative and censored data)", limits=c(0, 1000))
+  )
+  
+  na.omit(df_temp) %>% 
+    ggplot(aes(y=`Examination Year`+0.5, x=Age+0.5, fill=`aggregate_statistic`)) +
+    geom_tile(color="white", interpolate = F, lwd=0.25, alpha=0.75)+ 
+    geom_hline(yintercept = 2014, size=0.5, color="white")+
+    geom_abline(intercept=seq(1925, 2020, 5), color="white", size=0.5) +
+    # scale_fill_distiller(axis.data$title, #"% participants with protective titres",
+    #     palette = "RdYlGn", direction = 1,
+    # # scale_fill_gradientn("% participants with protective titres (>10 PEI/L)",
+    # #     # colours = ggthemes::tableau_div_gradient_pal(palette = "Temperature Diverging")(rev(seq(0.1, 1, length.out = 17))),
+    # #     colours = ggthemes::tableau_div_gradient_pal(palette = "Red-Green-Gold Diverging")(seq(0, 1, length.out = 17)),
+    #     labels = scales::percent_format(),
+    #     breaks=seq(0, 1, 0.25))+
+    # guides(fill=guide_colorbar(title.position = "top", ticks.linewidth = 2, nbin = 17, raster=F))+
+    scale_y_continuous(breaks=sort(c(seq(0, 2020, 5), 2014:2019, 2014:2019)), minor_breaks = 0:2020)+ 
+    scale_x_continuous(breaks=seq(0, 68, 5), minor_breaks = 0:100)+
+  #   scale_x_continuous(breaks=seq(0, 100, 5), minor_breaks = 0:100, 
+  #                    sec.axis = sec_axis(trans=function(x){2019-x+1}, breaks=sort(seq(0, 2019, 5)))) +
+  # theme(axis.text.x.top = element_text(angle=45, hjust=0.3, vjust=0), axis.ticks.x.top = element_blank())
+    coord_equal(xlim=c(1.8, 70), ylim = c(2013.8, 2019.2), expand = c(0, 0))+
+    # labs(title="Lexis chart: " %+% axis.data$title, x="Age (years)", y="Time (year): Birth / vacination / examination") +
+    theme(
+      legend.position = "none",
+      panel.grid.minor = element_line(color="white", size = 0.1)
+    ) + theme_void() + no_legend +
+    no.labels.x + no.labels.y + no.ticks.x + no.ticks.y + no.title.x + no.title.y
+      
+    
+}
+
+P1 <- lexis1(baza_de_date, agg_fun = "protective") +
+  # scale_fill_viridis_c(direction=-1)
+    scale_fill_distiller("% participants with protective titres", palette = "RdYlBu", direction = 1,
+                         labels = scales::percent_format(), breaks=seq(0, 1, 0.25))
+P1
+cowplot::ggsave2(filename = "header_long.png",plot = P1, width = 20, height = 1.75, units = "in", dpi = 300)
+  
+# lexis1(baza_de_date, a1a2 = 2007, a2b = 2001, bc = 1995, cd = 1991, de = 1986, agg_fun = "median_censored") + 
+#   scale_fill_distiller("Median titre (quantitative and censored data)", palette = "RdYlGn", direction = 1, 
+#                        trans="log10", breaks=2^seq(0, 10), limits=c(1, 512), na.value = "brown") + 
+#   guides(fill=guide_colorbar(title.position = "top", ticks.linewidth = 2, nbin = 19, raster=F))
+
+# "E: ≤1985", "D: [1986-1990]", "C: [1991-1994]",  "B: [1995-2000]",  "A2: [2001-2006]", "A1: ≥2007"
+```
+
+```{r setup, echo=F, message=F, warning=F, results='hide'}
+library(ggplot2)
+#library(cowplot) # plot_grid
+library(ggpubr)
+library(ggthemes)
+library(dplyr)
+library(pander)
+
+base_path = "~/Dropbox/Stats/"
+source(paste0(base_path, 'R library/search_for_variable.R'), echo=F)
+source(paste0(base_path, 'R library/mySSby.R'), echo=F)
+source(paste0(base_path, 'R library/mySSby3.R'), echo=F) # replace finalfit
+source(paste0(base_path, 'R library/describe_numerice1.R'), echo=F)
+source(paste0(base_path, 'R library/contingency.R'), echo=F)
+source(paste0(base_path, 'R library/describe2x2_v1.R'), echo=F)
+source(paste0(base_path, 'R library/mytheme.R'), echo=F)
+source(paste0(base_path, 'R library/assorted bits.R'), echo=F);
+source(paste0(base_path, 'R library/custom_charts.R'), echo=F);
+
+theme_set(theme_grey(10, base_family = "Times New Roman") + theme(
+  text = element_text(color="black"),
+  axis.text = element_text(color="black"),
+  axis.title.x = element_text(size=9, hjust=0),
+  axis.title.y = element_text(size=9, hjust=0),
+  legend.background = element_blank(), 
+  legend.key.size = unit(3, "mm"), 
+  legend.key = element_blank(), 
+  legend.title = element_text(size=9, hjust=0), 
+  legend.position = c(1, 1), legend.justification = c(1, 1), 
+  plot.subtitle = element_text(size = 9),
+  plot.caption = element_text(size = 9),
+  title = element_text(size = 9) ) )
+
+theme_reverse_grid = theme()
+
+```
+
+```{r fig.height=5, fig.width=9, dpi=300, echo=F, message=F, warning=F, results="asis"}
+font = "3270Narrow Nerd Font Mono"
+update_geom_defaults("text", list(family = font))
+update_geom_defaults("label", list(family = font))
+set.seed(3)
+x = rnorm(10000)
+y = x + rnorm(10000, sd = 4)
+df <- data.frame(x, y)
+df %>% ggplot(aes(x, y)) +   #geom_hex(color="white", lwd=0.5) +
+  geom_bin2d(color="white", lwd=0.5,alpha=0.75)+  theme_void()+ no_legend +
+  # scale_fill_viridis_c(direction=1, option="D") +  
+  scale_fill_distiller(palette = "Spectral", direction=1)+
+  coord_cartesian(xlim = c(-1.25, 2.75)*0.85-0.1, ylim = c(-4, 6)*0.95+0.4) +
+  annotate("text", x=-1.25, y=-3.025, size=22, label="Behind Error Bars", bold=T, hjust=0, vjust=0) +
+  annotate("text", x=1.75, y=-3.025, size=10, label=".com", italic=T, hjust=0, vjust=0) +
+  annotate("text", x=-1.25, y=-0, size=10, label="Statistics counseling and data analysis", italic=T, hjust=0, vjust=0) +
+  annotate("text", x=-1.25, y=-1, size=10, label="for students and researchers", italic=T, hjust=0, vjust=0) +
+  annotate("text", x=-1.25, y=4.1, size=10, label="alex@behinderrorbars.com", italic=T, hjust=0, vjust=0)
+```
+
+```{r fig.height=5, fig.width=9, dpi=300, echo=F, message=F, warning=F, results="asis"}
+
+library(cowplot)
+library(magick)
+
+font = "Noto Sans"
+update_geom_defaults("text", list(family = font))
+update_geom_defaults("label", list(family = font))
+set.seed(3)
+x = rnorm(10000)
+y = x + rnorm(10000, sd = 4)
+df <- data.frame(x, y)
+my_plot <- df %>% ggplot(aes(x, y)) +   #geom_hex(color="white", lwd=0.5) +
+  geom_bin2d(color="white", lwd=0.5,alpha=0.5)+  theme_void()+ no_legend +
+  # scale_fill_viridis_c(direction=1, option="D") +  
+  scale_fill_distiller(palette = "Spectral", direction=-1)+
+  coord_cartesian(xlim = c(-1.25, 2.75)*0.85-0.1, ylim = c(-4, 6)*0.95+0.4) +
+  annotate("text", x=0.537, y=3.33, size=8, hjust=0.5, vjust=0, 
+           label="- best prices - classic & modern software -\n- simple & advanced methods -\n- customized reports for your university -") +
+  annotate("text", x=1.3, y=-0.55, size=10, label="Statistics & data analysis\n for students and researchers", hjust=1, vjust=0, 
+         fontface = 'bold') +
+  annotate("text", x=1.3, y=-2.25, size=10, label="www.behinderrorbars.com",  hjust=1, vjust=0) +
+  annotate("text", x=1.3, y=-3.25, size=10, label="alex@behinderrorbars.com", hjust=1, vjust=0)
+
+
+
+ggdraw() + draw_plot(my_plot) + 
+  draw_image("qrcode.png", x = 0.35, y=0.02, hjust = 0, vjust=0, height = .5)
+```
+
+
+```{r echo=F, fig.height=1, fig.width=15, message=FALSE, warning=FALSE, dpi=300, results="asis"}
+# font = "3270Narrow Nerd Font Mono"
+# update_geom_defaults("text", list(family = font))
+# update_geom_defaults("label", list(family = font))
+set.seed(3)
+x = rnorm(10000)
+y = x + rnorm(10000, sd = 4)
+df <- data.frame(x, y)
+P1 <- df %>% ggplot(aes(x, y)) +   #geom_hex(color="white", lwd=0.5) +
+  geom_bin2d(color="#2a2a2a", lwd=0.25,alpha=0.5, binwidth=c(0.1, 2))+  theme_void()+ no_legend + #theme(plot.background = element_rect(fill="#2a2a2a"))+
+  # scale_fill_viridis_c(direction=1, option="D") +  
+  scale_fill_distiller(palette = "Spectral", direction=-1)+
+  coord_cartesian(xlim = c(-1.25, 2.75)*0.85-0.75, ylim = c(-4, 6)*0.95+0.4)
+
+P1
+cowplot::ggsave2(filename = "header_long1.png",plot = P1, width = 20, height = 1.75, units = "in", dpi = 300)
+  # annotate("text", x=-1.25, y=-3.025, size=22, label="Behind Error Bars", bold=T, hjust=0, vjust=0) +
+  # annotate("text", x=1.75, y=-3.025, size=10, label=".com", italic=T, hjust=0, vjust=0) +
+  # annotate("text", x=-1.25, y=-0, size=10, label="Statistics counseling and data analysis", italic=T, hjust=0, vjust=0) +
+  # annotate("text", x=-1.25, y=-1, size=10, label="for students and researchers", italic=T, hjust=0, vjust=0) +
+  # annotate("text", x=-1.25, y=4.1, size=10, label="alex@behinderrorbars.com", italic=T, hjust=0, vjust=0)
+```
+.
