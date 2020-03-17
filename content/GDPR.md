@@ -2,7 +2,7 @@
 title: "Data privacy issues and GDPR compliance"
 date: 2020-03-06T22:59:05+02:00
 linktitle: GDPR & data privacy
-description: I live in the European Union, where GDPR is a thing. I don't keep your data. Please don't send me sensitive data. Annonimize your database.
+summary: I live in the European Union, where GDPR is a thing. I don't keep your data. Please don't send me sensitive data. Annonimize your database.
 categories:
   - "Administrative"
 tags:

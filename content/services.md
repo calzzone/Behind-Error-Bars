@@ -2,7 +2,7 @@
 title: "Services"
 date: 2020-03-06T22:59:05+02:00
 linktitle: Services
-description: What I can offer.
+summary: What I can offer.
 categories:
   - "Administrative"
 tags:

@@ -2,7 +2,7 @@
 title: "Showcase"
 date: 2020-03-06T22:59:05+02:00
 linktitle: Showcase
-description: Portfolio.
+summary: Portfolio.
 categories:
   - "Portfolio"
 tags:

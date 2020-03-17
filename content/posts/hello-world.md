@@ -2,7 +2,7 @@
 title: "Hello World"
 date: 2020-03-06T22:59:05+02:00
 linktitle: Hello World
-description: Every new computer-related thing need to start with a Hello World! More stuff coming soon!
+summary: "Every new computer-related thing need to start with a Hello World! More stuff coming soon!"
 categories:
   - "Posts"
 tags:
@@ -13,7 +13,7 @@ tags:
 
 Every new computer-related thing need to start with a Hello World! More stuff coming soon!
 
-# Behind Error Bars
+## Behind Error Bars
 
 This is my website. I made it for 2 reasons:
 

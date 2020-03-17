@@ -2,7 +2,7 @@
 title: "Expectations"
 date: 2020-03-06T22:59:05+02:00
 linktitle: Expectations
-description: Expectations.
+summary: Expectations.
 categories:
   - "Administrative"
 tags:

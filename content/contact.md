@@ -2,7 +2,7 @@
 title: "Contact"
 date: 2020-03-06T22:59:05+02:00
 linktitle: Contact
-description: Contact me
+summary: How to contact me
 categories:
   - "Administrative"
 tags:
