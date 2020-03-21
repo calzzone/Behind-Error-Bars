@@ -6,14 +6,14 @@ paginate = "10" # Number of posts per page
 googleAnalytics = "UA-144379931-1" # Enable Google Analytics by entering your tracking id
 
 [Author] # Used in authorbox
-  name = "Alex Istrate"
+  name = "Behind Error Bars"
   bio = "Epidemiologist turned freelance data analyst. I am one person. You can buy me a beer in Cluj-Napoca, Romania."
   avatar = "/img/avatar.png"
   
 [Params]
   subtitle = "Data Analysis Services and Opinions" # Subtitle of your site. Used in site header
 #   description = "John Doe's Personal blog about everything" # Site description. Used in meta description
-  copyright = "Alex Istrate" # Footer copyright holder, otherwise will use site title
+  copyright = "Behind Error Bars" # Footer copyright holder, otherwise will use site title
   readmore = false # Show "Read more" button in list if true
   authorbox = true # Show authorbox at bottom of pages if true
   toc = true # Enable Table of Contents
