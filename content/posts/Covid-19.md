@@ -1,8 +1,8 @@
 ---
-title: "Covid-19 analysis in Romania by Mar 21, 2020"
+title: "Covid-19 analysis in Romania by Mar 22, 2020"
 date: 2020-03-21T20:00:00+02:00
-linktitle: "Covid-19 analysis in Romania by Mar 21, 2020"
-summary: "I wanted to make my own predictions on the Covid-19 epidemic in Romania, where I live. Although Romanian authorities report confirmed cases several times a day, I decided to use data from [Our World in Data](https://ourworldindata.org/coronavirus), specifically from the [full dataset csv file](https://covid.ourworldindata.org/data/ecdc/full_data.csv) linked among their sources. They claim is that the data is updated daily at 20:00 London time. I can live with a small delay. By the time I uploaded this, the total number of cases in Romania was at least 367, but the data that I downloaded shoed 308. I will regularly update this post, as new data is available or as I get new ideas."
+linktitle: "Covid-19 analysis in Romania by Mar 22, 2020"
+summary: "[UPDATED Mar 22, 2020] I wanted to make my own predictions on the Covid-19 epidemic in Romania, where I live. Although Romanian authorities report confirmed cases several times a day, I decided to use data from [Our World in Data](https://ourworldindata.org/coronavirus), specifically from the [full dataset csv file](https://covid.ourworldindata.org/data/ecdc/full_data.csv) linked among their sources. They claim is that the data is updated daily at 20:00 London time. I can live with a small delay. By the time I uploaded this, the total number of cases in Romania was at least 433 with the first two deaths this morning, but the data that I downloaded showed 367 and no deaths. I will regularly update this post, as new data is available or as I get new ideas."
 categories:
   - "Posts"
 tags:
@@ -10,8 +10,9 @@ tags:
   - "Coronavirus"
 ---
 
-I wanted to make my own predictions on the Covid-19 epidemic in Romania, where I live. Although Romanian authorities report confirmed cases several times a day, I decided to use data from [Our World in Data](https://ourworldindata.org/coronavirus), specifically from the [full dataset csv file](https://covid.ourworldindata.org/data/ecdc/full_data.csv) linked among their sources. They claim is that the data is updated daily at 20:00 London time. I can live with a small delay. By the time I uploaded this, the total number of cases in Romania was at least 367, but the data that I downloaded shoed 308. I will regularly update this post, as new data is available or as I get new ideas.
+***UPDATED Mar 22, 2020***
 
+I wanted to make my own predictions on the Covid-19 epidemic in Romania, where I live. Although Romanian authorities report confirmed cases several times a day, I decided to use data from [Our World in Data](https://ourworldindata.org/coronavirus), specifically from the [full dataset csv file](https://covid.ourworldindata.org/data/ecdc/full_data.csv) linked among their sources. They claim is that the data is updated daily at 20:00 London time. I can live with a small delay. By the time I uploaded this, the total number of cases in Romania was at least 433 with the first two deaths this morning, but the data that I downloaded showed 367 and no deaths. I will regularly update this post, as new data is available or as I get new ideas.
 
 ```r
 # Setup some things
@@ -45,7 +46,9 @@ Comparing Romania with the world (excl. China), Italy (the worst of Europe, so f
 
 By April 1, these models predict that Romania may have 1000 new dayly cases at worse under a log-linear increase or, under a log-quadratic model, the number of new daily cases may have already peaked and it may decrease to 8/day. However, all these models have wide error margins, especially the quadratic ones. The upper limits of these errors are further amplified in linear space.
 
-Thin solid lines show the number of new deaths, which seem parallel to the number of new cases, just shifted 2 weeks to the right. By this logic, Romania should exprience the first deaths before April 1 and approx. 32 deaths around April 1.
+Thin solid lines show the number of new deaths, which seem parallel to the number of new cases, just shifted 2 weeks to the right. By this logic, Romania should exprience the first deaths before April 1 and approx. 32 deaths during the first half of April.
+
+UPDATE Mar 22, 2020: The first two deaths occured this morning, but the dataset does not includes them yet.
 
 
 ```r
@@ -76,14 +79,13 @@ full_data %>%
   labs(color="Location", fill="Location")
 ```
 
-![](/Covid-19_files/figure-html/figure1.png)<!-- -->
+![](/Covid-19_files/figure-html/unnamed-chunk-3-1.png)<!-- -->
 
 ## Total cases
 
 The chart below plots the total number of confirmed cases (thick step-lines) and deaths (thin step-lines) for several locations. I added linear and second order polynomial forecasts (dashed and dotted lines) for the total number of cases, based on the upper 2/3 of each location's step-line. Thsese forecasts could be seen as worst-case and best-case scenarios. The linear forcast is based on a linear regression of the log of the total number of cases by date, which means it is an exponential fit with a linear y axis. The polynmial fit is based on a polynomial regression of the log of number new daily cases by date. The model tren predics the number of total cases from the estimated number of new cases.
 
 For Romania, these models predict 8000 cases at worse by April 1 or the end of the epideminc at 500 cases. Keep in mind that these models have wide margins of error.
-
 
 ```r
 data <- full_data %>% 
@@ -145,14 +147,13 @@ data %>% ggplot(aes(x=`Date`)) +
        caption = str_wrap("Forecasts based on the upper 2/3 of the step-lines, to avoid the uncertainty due to small numbers.", 120))
 ```
 
-![](/Covid-19_files/figure-html/figure2.png)<!-- -->
+![](/Covid-19_files/figure-html/unnamed-chunk-4-1.png)<!-- -->
 
 ## Growth rate of the epidemic
 
 As a measure for the growth rate of the epidemic, I calculated the rolling ratio between the new cases in one window of time and that in a previous window. The size of any given window can be set to any number of days (I selected 1, 3, 5 and 7 days). The denominator can be set with a delay. I created two scenarios, one with 1 day delay and another one with a delay equal to window size. I coded the size of the window by color (dark =  1 day, yellow = 7 days).
 
 When the ratio is above 1, the epidemic is getting worse (exponential growth). 1 means linear growth (same number of cases each day). Below 1 means the epidemic is ending (fewer and fewer new cases).
-
 
 ```r
 # some setup paramenters
@@ -172,7 +173,6 @@ rdiff <- function(x, windows = 3, delay=1, default = 0.1, by = NULL) {
  
 }
 ```
-
 ### 1 day delay scenario
 
 Taking moving windows of 1 (the fastest and most instable), 3, 5, and 7 days (smoothed over 1 week), with a delay of 1 day, I found that all countries have the epidemic under control. In all cases, the epidemic is still growing, but the growth rate has slowed down and it approaches 1 (linear growth) and will eventually fall below 1. The world is still under exponential grwoth, as new countries enter the exponential phase of the epidemic.
@@ -215,12 +215,11 @@ full_data %>% filter(location %in% c("Romania", "Italy", "Spain", "United Kingdo
        subtitle = "with 1 day delay between numerator and denominator")
 ```
 
-![](/Covid-19_files/figure-html/figure3.png)<!-- -->
+![](/Covid-19_files/figure-html/unnamed-chunk-6-1.png)<!-- -->
 
 ### Delays of variable sizes scenario
 
 Taking moving windows of 1 (the fastest and most instable), 3, 5, and 7 days (smoothed over 1 week), with a delay of the same sizes, I found a similar story.
-
 
 ```r
 full_data %>% filter(location %in% c("Romania", "Italy", "Spain", "United Kingdom", "Iran")) %>%
@@ -262,11 +261,13 @@ full_data %>% filter(location %in% c("Romania", "Italy", "Spain", "United Kingdo
        subtitle = "with the same delay as the window between numerator and denominator")
 ```
 
-![](/Covid-19_files/figure-html/figure4.png)<!-- -->
+![](/Covid-19_files/figure-html/unnamed-chunk-7-1.png)<!-- -->
 
 ## Final remarks
 
-Althogh still in exponential growth, Romania seems to keep the epidemic under control, and is expected to return to linear growth and eventual resolution within several weeks. Quarantine measures seem effective. No deaths so far is good sign, although the first deaths are likely to occur soon. A total number of confirmed cases in the thousands is likely before summer. 
+Althogh still in exponential growth, Romania seems to keep the epidemic under control, and is expected to return to linear growth and eventual resolution within several weeks. A total number of confirmed cases in the thousands is likely before summer. Quarantine measures seem effective. ~~No deaths so far is good sign, although the first deaths are likely to occur soon.~~
+
+UPDATE Mar 22, 2020: The first two deaths occured this morning, but the dataset does not includes them yet. 
 
 My prediction is that we will soon enter a period of linear growth and no complete resolution this year. Quarantine measures may not be possible to a sufficient level during autum due to economic reasons, which means that during the next cold season we may experience a much more severe epidemic, with causalties in the hundreds or thousands.
 
